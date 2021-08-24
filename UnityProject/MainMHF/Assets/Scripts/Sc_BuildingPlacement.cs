@@ -27,6 +27,7 @@ public class Sc_BuildingPlacement : MonoBehaviour
         if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 8)))
         {
             transform.position = hit.point;
+            transform.rotation *= Quaternion.Euler( Vector3.Cross(transform.up, hit.normal) );
         }
 
         if (Input.GetMouseButton(0))

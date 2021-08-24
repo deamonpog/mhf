@@ -4,15 +4,18 @@ using UnityEngine;
 
 public class Sc_CameraMovement : MonoBehaviour
 {
-    float speed = 0.06f;
-    float zoomSpeed = 10.0f;
-    float rotateSpeed = 0.1f;
+    public float CameraMoveSpeed = 0.06f;
+    public float CameraZoomSpeed = 20.0f;
+    public float CameraRotateSpeed = 0.5f;
 
     float maxHeight = 40f;
     float minHeight = 4f;
 
     Vector2 p1;
     Vector2 p2;
+
+    public GameObject cameraGroundPos;
+    public GameObject cameraArmPos;
 
     // Start is called before the first frame update
     void Start()
@@ -23,40 +26,36 @@ public class Sc_CameraMovement : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        float hsp = speed * Input.GetAxis("Horizontal");
-        float vsp = speed * Input.GetAxis("Vertical");
-        float scrollSp = -zoomSpeed * Input.GetAxis("Mouse ScrollWheel");
+        // Zoom in-out towards the camera direction
+        cameraArmPos.transform.position += cameraArmPos.transform.forward * CameraZoomSpeed * Input.GetAxis("Mouse ScrollWheel");
 
-        if ((transform.position.y >= maxHeight) && (scrollSp > 0))
+        if (! Input.GetMouseButton(2))
         {
-            scrollSp = 0;
+            // -- Mouse Move --
+            // Horizontal Camera Move
+            if (Input.mousePosition.x < 10)
+            {
+                transform.rotation *= Quaternion.Euler(0, 0, CameraMoveSpeed);
+            }
+            else if (Input.mousePosition.x > Screen.width - 10)
+            {
+                transform.rotation *= Quaternion.Euler(0, 0, -CameraMoveSpeed);
+            }
+            // Vertical Camera Move
+            if (Input.mousePosition.y < 10)
+            {
+                transform.rotation *= Quaternion.Euler(-CameraMoveSpeed, 0, 0);
+            }
+            else if (Input.mousePosition.y > Screen.height - 10)
+            {
+                transform.rotation *= Quaternion.Euler(CameraMoveSpeed, 0, 0);
+            }
         }
-        else if ((transform.position.y < minHeight) && (scrollSp < 0))
+        else
         {
-            scrollSp = 0;
+            getCameraRotation();
         }
-
-        if ((transform.position.y + scrollSp) > maxHeight)
-        {
-            scrollSp = maxHeight - transform.position.y;
-        }
-        else if ((transform.position.y + scrollSp) < minHeight)
-        {
-            scrollSp = minHeight - transform.position.y;
-        }
-
-        Vector3 verticalMove = new Vector3(0, scrollSp, 0);
-        Vector3 lateralMove = hsp * transform.right;
-        Vector3 forwardMove = transform.forward;
-        forwardMove.y = 0;
-        forwardMove.Normalize();
-        forwardMove *= vsp;
-
-        Vector3 move = verticalMove + lateralMove + forwardMove;
-
-        transform.position += move;
-
-        getCameraRotation();
+        
     }
 
     void getCameraRotation()
@@ -70,8 +69,8 @@ public class Sc_CameraMovement : MonoBehaviour
         {
             p2 = Input.mousePosition;
 
-            float dx = (p2 - p1).x * rotateSpeed;
-            float dy = (p2 - p1).y * rotateSpeed;
+            float dx = (p2 - p1).x * CameraRotateSpeed;
+            float dy = (p2 - p1).y * CameraRotateSpeed;
 
             transform.rotation *= Quaternion.Euler(new Vector3(0, dx, 0));
 
