@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6936769946487828539}
   - component: {fileID: -3744040647305635176}
   m_Layer: 0
-  m_Name: House_Blueprint
+  m_Name: Academy_Blueprint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -6,8 +6,8 @@ public class Sc_StartBuilding : MonoBehaviour
 {
     public GameObject TheBuildingType;
 
-    public void spawnBuilding()
+    public void spawnBuilding(GameObject inobj)
     {
-        Instantiate(TheBuildingType);
+        Instantiate(inobj);
     }
 }
