@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 4071302611878299537}
   - component: {fileID: 8464653687069646711}
   - component: {fileID: 9017440979490745905}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -105,9 +105,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1967589206107689315}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: PowerPlant
-  m_TagString: Untagged
+  m_TagString: Building
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -140,7 +140,7 @@ GameObject:
   - component: {fileID: 8758033258244527718}
   - component: {fileID: 6433723578970117603}
   - component: {fileID: 6121040885612783967}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Cylinder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
