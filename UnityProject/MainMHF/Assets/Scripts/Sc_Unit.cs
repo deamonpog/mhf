@@ -40,7 +40,15 @@ public class Sc_Unit : MonoBehaviour
 
         linearSpeed += acceleration * Time.deltaTime;
 
-        transform.position += transform.forward.normalized * linearSpeed * Time.deltaTime;
+        Vector3 newPosition = transform.position + transform.forward.normalized * linearSpeed * Time.deltaTime;
+
+        RaycastHit hit;
+        if( Physics.Raycast(transform.position, p_to_this * -1.0f, out hit, 5000.0f, (1 << 8)))
+        {
+            newPosition = hit.point;
+        }
+
+        transform.position = newPosition;
 
         Quaternion q = Quaternion.FromToRotation(Vector3.up, p_to_this);
 
