@@ -185,7 +185,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07df0b2dee4b38f4a92ed35aa2e39ab8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CameraMoveSpeed: 0.01
+  mTargetPlanet: {fileID: 398288510}
+  CameraMoveSpeed: 0.05
   CameraZoomSpeed: 50
   CameraRotateSpeed: 1
   cameraGroundPos: {fileID: 1466682933}
@@ -215,7 +216,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -1897
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalPosition.y
@@ -223,7 +224,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -431
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalRotation.w
@@ -689,7 +690,27 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 398288510}
     - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
+      propertyPath: mPlanet
+      value: 
+      objectReference: {fileID: 398288510}
+    - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
+      propertyPath: gizmoLen
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
+      propertyPath: turnMult
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
       propertyPath: ThePlanet
+      value: 
+      objectReference: {fileID: 398288510}
+    - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
+      propertyPath: speedMult
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
+      propertyPath: mTargetPlanet
       value: 
       objectReference: {fileID: 398288510}
     - target: {fileID: 8021851529169152269, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}

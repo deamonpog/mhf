@@ -4,66 +4,115 @@ using UnityEngine;
 
 public class Sc_Unit : MonoBehaviour
 {
-    public Collider CollisionBoundingVolume;
+    [Tooltip("The planet sphere object that this Unit resides on.")]
+    public GameObject mPlanet; 
 
-    public GameObject _Planet;
-    
-    float _PlanetRadius;
+    protected float mPlanetRadius;
 
-    float linearSpeed = 0.0f;
+    public float mLinearSpeed = 0.0f;
+    public float mTurnSpeed = 0.0f;
 
-    public float mass = 1.0f;
+    public float mMaxTurnRate = 40.0f;
+    [Tooltip("Max rate at which the pitch of the unit will change. Useful to match this with climbable angles.")]
+    public float mMaxPitchRate = 10.0f;
+
+    public float mMass = 1.0f;
+
+    public bool isMoving = false;
+    public float reachRadius = 5.0f;
+    public Vector3 destLocation;
+    public Sc_SphericalCoords destPosSC;
+    public float thetaSpeed = 0f;
+    public float phiSpeed = 0f;
+    public float maxAccel = 10.0f;
+    Vector2 accelThetaPhi = Vector2.zero;
+    Vector2 velocityThetaPhi = Vector2.zero;
+    float maxSpeedThetaPhi = 1.0f;
+
+    Vector3 surfaceNormal;
+    public float gizmoLen = 20.0f;
+    RaycastHit hit;
 
     // Start is called before the first frame update
     void Start()
     {
-        _PlanetRadius = _Planet.transform.lossyScale.x / 10.0f;
-        Vector3 p_to_this = (transform.position - _Planet.transform.position).normalized;
-        transform.position = _PlanetRadius * p_to_this;
-        //transform.rotation = Quaternion.Euler( Vector3.Cross(transform.up, transform.position.normalized) );
+        mPlanetRadius = mPlanet.transform.lossyScale.x / 10.0f;
+        Vector3 p_to_this = (transform.position - mPlanet.transform.position).normalized;
+        Quaternion initialOrientation = Quaternion.FromToRotation(transform.up, p_to_this);
+
+        transform.position = mPlanet.transform.position + mPlanetRadius * p_to_this;
+        transform.rotation = initialOrientation;
     }
 
     // Update is called once per frame
     void Update()
     {
-        //print(transform.up.normalized);
 
-        Quaternion finalRotation = transform.rotation;
-
-        Vector3 p_to_this = (transform.position - _Planet.transform.position).normalized;
-
-        float forwardForceRatio = Input.GetAxis("Vertical");
-        
-        float accelerationForce = 10f * forwardForceRatio;
-
-        float acceleration = accelerationForce / mass;
-
-        linearSpeed += acceleration * Time.deltaTime;
-
-        Vector3 newPosition = transform.position + transform.forward.normalized * linearSpeed * Time.deltaTime;
-
-        RaycastHit hit;
-        if( Physics.Raycast(transform.position, p_to_this * -1.0f, out hit, 5000.0f, (1 << 8)))
-        {
-            newPosition = hit.point;
+        if (Input.GetMouseButtonDown(1)) {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if(Physics.Raycast(ray, out hit, 50000.0f, (1 << 8)))
+            {
+                isMoving = true;
+                destLocation = hit.point;
+                destPosSC = Sc_SphericalCoords.getSphericalCoordinates(destLocation);
+            }
         }
 
-        transform.position = newPosition;
-
-        Quaternion q = Quaternion.FromToRotation(Vector3.up, p_to_this);
-
-        finalRotation = q;
-
-        float turnRightForceRatio = Input.GetAxis("Horizontal");
-
-        if (turnRightForceRatio > 0)
+        if (isMoving)
         {
-            Quaternion qturn = Quaternion.AngleAxis(30f , Vector3.up);
-            print("turning");
-            finalRotation = q * qturn;
+            if(Vector3.Distance(destLocation, transform.position) < reachRadius)
+            {
+                isMoving = false;
+            }
+            else
+            {
+                Sc_SphericalCoords thisPosSC = Sc_SphericalCoords.getSphericalCoordinates(transform.position);
+                accelThetaPhi = new Vector2(destPosSC.theta - thisPosSC.theta, destPosSC.phi - thisPosSC.phi);
+                accelThetaPhi.Normalize();
+                accelThetaPhi *= maxAccel;
+
+                velocityThetaPhi += accelThetaPhi * Time.deltaTime;
+                if(velocityThetaPhi.magnitude > maxSpeedThetaPhi)
+                {
+                    velocityThetaPhi.Normalize();
+                    velocityThetaPhi *= maxSpeedThetaPhi;
+                }
+                if(accelThetaPhi.magnitude == 0f)
+                {
+                    velocityThetaPhi = Vector2.zero;
+                }
+
+                Sc_SphericalCoords nextPosSC = new Sc_SphericalCoords();
+                nextPosSC.r = thisPosSC.r;
+                nextPosSC.theta = thisPosSC.theta + velocityThetaPhi.x * Time.deltaTime;
+                nextPosSC.phi = thisPosSC.phi + velocityThetaPhi.y * Time.deltaTime;
+
+                Vector3 newPos = Sc_SphericalCoords.getCartesianCoordinates(nextPosSC);
+
+                Vector3 planetSurfaceNormal = (newPos - mPlanet.transform.position).normalized; // surface normal at this newPos
+                surfaceNormal = planetSurfaceNormal;
+
+                transform.rotation = Quaternion.LookRotation(newPos - transform.position, transform.up);
+                transform.position = newPos;
+            }
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (isMoving)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawSphere(hit.point, 10.0f);
         }
 
-        transform.rotation = finalRotation;
-
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawLine(transform.position, transform.position + surfaceNormal * gizmoLen * 2f);
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(transform.position, transform.position + transform.up * gizmoLen);
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(transform.position, transform.position + transform.right * gizmoLen);
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * gizmoLen);
     }
 }
