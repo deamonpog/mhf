@@ -216,7 +216,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1897
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalPosition.y
@@ -224,7 +224,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -431
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 109c2526bcb2ed2439556bf45f8a31a8, type: 3}
       propertyPath: m_LocalRotation.w
@@ -695,7 +695,7 @@ PrefabInstance:
       objectReference: {fileID: 398288510}
     - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
       propertyPath: gizmoLen
-      value: 30
+      value: 40
       objectReference: {fileID: 0}
     - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
       propertyPath: turnMult
@@ -735,7 +735,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8021851529169152269, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 625
+      value: 840
       objectReference: {fileID: 0}
     - target: {fileID: 8021851529169152269, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
       propertyPath: m_LocalPosition.z
