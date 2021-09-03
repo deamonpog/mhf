@@ -698,6 +698,10 @@ PrefabInstance:
       value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
+      propertyPath: maxAccel
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 800090141320456209, guid: 83ad82f3fc6433e4e8c7768850eb4e9f, type: 3}
       propertyPath: turnMult
       value: 30
       objectReference: {fileID: 0}
