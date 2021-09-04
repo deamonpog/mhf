@@ -5,39 +5,27 @@ using UnityEngine;
 public class Sc_Unit : MonoBehaviour
 {
     [Tooltip("The planet sphere object that this Unit resides on.")]
-    public GameObject mPlanet; 
+    public GameObject mPlanet;
 
-    protected float mPlanetRadius;
+    [Tooltip("Radius of the planet")]
+    public float mPlanetRadius;
 
-    public float mLinearSpeed = 0.0f;
-    public float mTurnSpeed = 0.0f;
+    public float mSpeed = 0.0f;
+    public float mMaxSpeed = 100.0f;
+    public float mMaxAccel = 50.0f;
 
-    public float mMaxTurnRate = 40.0f;
-    [Tooltip("Max rate at which the pitch of the unit will change. Useful to match this with climbable angles.")]
-    public float mMaxPitchRate = 10.0f;
+    public bool mIsMoving = false;
+    public float mUnitRadius = 5.0f;
 
-    public float mMass = 1.0f;
-
-    public bool isMoving = false;
-    public float reachRadius = 5.0f;
-    public Vector3 destLocation;
-    public Sc_SphericalCoord destPosSC;
-    public float thetaSpeed = 0f;
-    public float phiSpeed = 0f;
-    public float maxAccel = 10.0f;
-    Vector2 accelThetaPhi = Vector2.zero;
-    Vector2 velocityThetaPhi = Vector2.zero;
-    float maxSpeedThetaPhi = 100.0f;
-
-    Vector3 surfaceNormal;
-    public float gizmoLen = 20.0f;
-    public float distRatio = 0.1f;
-    public Vector3 midpoint;
-    public float destLat;
-    public float destLon;
-    Sc_GeographicCoord midGeo;
-    Sc_GeographicCoord thisGeo;
+    public Vector3 destLocation = new Vector3();
     Sc_GeographicCoord destGeo = new Sc_GeographicCoord();
+
+
+    // debug stuff
+    Vector3 surfaceNormal;
+    public float gizmoLen = 2.0f;
+    Sc_GeographicCoord thisGeo;
+    
     public Vector3 altLoc = new Vector3();
     public Vector3 convertBack = new Vector3();
     public Sc_SphericalCoord altLocSC;
@@ -48,11 +36,13 @@ public class Sc_Unit : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        mPlanetRadius = mPlanet.transform.lossyScale.x / 10.0f;
-        Vector3 p_to_this = (transform.position - mPlanet.transform.position).normalized;
-        Quaternion initialOrientation = Quaternion.FromToRotation(transform.up, p_to_this);
+        mPlanetRadius = mPlanet.GetComponent<Sc_PlanetDescriptor>().mRadius;
 
-        transform.position = mPlanet.transform.position + mPlanetRadius * p_to_this;
+        // setup position and orientation
+        Vector3 planetSurfaceNormal = (transform.position - mPlanet.transform.position).normalized;
+        Quaternion initialOrientation = Quaternion.FromToRotation(transform.up, planetSurfaceNormal);
+
+        transform.position = mPlanet.transform.position + mPlanetRadius * planetSurfaceNormal;
         transform.rotation = initialOrientation;
     }
 
@@ -64,9 +54,9 @@ public class Sc_Unit : MonoBehaviour
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if(Physics.Raycast(ray, out hit, 50000.0f, (1 << 8)))
             {
-                isMoving = true;
+                mIsMoving = true;
                 destLocation = hit.point;
-                destPosSC = Sc_SphericalCoord.FromCartesian(destLocation);
+                destGeo = Sc_SphericalCoord.FromCartesian(destLocation).ToGeographic();
             }
         }
 
@@ -83,23 +73,16 @@ public class Sc_Unit : MonoBehaviour
             }
         }
 
-        if (isMoving)
+        if (mIsMoving)
         {
-            if(Vector3.Distance(destLocation, transform.position) < reachRadius)
+            if(Vector3.Distance(destLocation, transform.position) < mUnitRadius)
             {
-                isMoving = false;
-                mLinearSpeed = 0f;
+                mIsMoving = false;
+                mSpeed = 0f;
             }
             else
             {
-                Sc_SphericalCoord thisPosSpherical = Sc_SphericalCoord.FromCartesian(transform.position);
-
-                // Great circle navigation method
-
-                thisGeo = thisPosSpherical.ToGeographic();
-                destGeo = destPosSC.ToGeographic();
-                destLat = Mathf.Rad2Deg * destGeo.lat;
-                destLon = Mathf.Rad2Deg * destGeo.lon;
+                thisGeo = Sc_SphericalCoord.FromCartesian(transform.position).ToGeographic();
 
                 // find north at this point
                 var scnorth = Sc_SphericalCoord.FromCartesian(transform.position);
@@ -118,15 +101,15 @@ public class Sc_Unit : MonoBehaviour
                 Quaternion qAlpha1 = Quaternion.Euler(0f, alpha1 * Mathf.Rad2Deg, 0f);
                 Quaternion curRotation = qNorth * qAlpha1;
 
-                mLinearSpeed += maxAccel * Time.deltaTime;
-                if(mLinearSpeed > 200.0f)
+                mSpeed += mMaxAccel * Time.deltaTime;
+                if(mSpeed > mMaxSpeed)
                 {
-                    mLinearSpeed = 200.0f;
+                    mSpeed = mMaxSpeed;
                 }
 
-                Vector3 newPos = transform.position + (curRotation * Vector3.forward) * mLinearSpeed * Time.deltaTime;
+                Vector3 newPos = transform.position + (curRotation * Vector3.forward) * mSpeed * Time.deltaTime;
                 var scnewpos = Sc_SphericalCoord.FromCartesian(newPos);
-                scnewpos.radial = thisPosSpherical.radial;
+                scnewpos.radial = mPlanetRadius;
                 newPos = scnewpos.ToCartesian();
 
                 Quaternion newRotation = Quaternion.LookRotation(newPos - transform.position, transform.up);
@@ -134,92 +117,21 @@ public class Sc_Unit : MonoBehaviour
                 transform.position = newPos;
                 transform.rotation = newRotation;
 
-                /*
-
-                // alpha0 : course (angle) at node position (node is the position where course path crosses the equator)
-                float alpha0y = Mathf.Sin(alpha1) * Mathf.Cos(thisGeo.lat);
-                float alpha0x = Mathf.Sqrt( Mathf.Pow(Mathf.Cos(alpha1), 2) + Mathf.Pow(Mathf.Sin(alpha1), 2) * Mathf.Pow(Mathf.Sin(thisGeo.lat), 2));
-                float alpha0 = Mathf.Atan2(alpha0y, alpha0x);
-
-                // sigma12 : central angle between start and destination points (angular distance)
-                float sigma12y = Mathf.Sqrt(Mathf.Pow(Mathf.Cos(thisGeo.lat) * Mathf.Sin(destGeo.lat) - Mathf.Sin(thisGeo.lat) * Mathf.Cos(destGeo.lat) * Mathf.Cos(lon12), 2) 
-                    + Mathf.Pow(Mathf.Cos(destGeo.lat) * Mathf.Sin(lon12), 2));
-                float sigma12x = Mathf.Sin(thisGeo.lat) * Mathf.Sin(destGeo.lat) + Mathf.Cos(thisGeo.lat) * Mathf.Cos(destGeo.lat) * Mathf.Cos(lon12);
-                float sigma12 = Mathf.Atan2(sigma12y, sigma12x);
-
-                // sigma01 : angular distance between start position and the node of the great circle
-                float sigma01 = (thisGeo.lat == 0 && alpha1 == 90.0f) ? 0.0f : Mathf.Atan2(Mathf.Tan(thisGeo.lat), Mathf.Cos(alpha1));
-
-                // sigma02 : angular distance between destination position and the node of the great circle
-                float sigma02 = sigma01 + sigma12;
-
-                // lon0 : longitude at the node of the great circle
-                float lon01 = Mathf.Atan2(Mathf.Sin(alpha0) * Mathf.Sin(sigma01), Mathf.Cos(sigma01));
-                float lon0 = thisGeo.lon - lon01;
-
-                // desired point calculation
-                float sigma = distRatio * (sigma01 + sigma02);
-
-                float phi_y = Mathf.Cos(alpha0) * Mathf.Sin(sigma);
-                float phi_x = Mathf.Sqrt(Mathf.Pow(Mathf.Cos(sigma),2) + Mathf.Pow(Mathf.Sin(alpha0), 2) * Mathf.Pow(Mathf.Sin(sigma), 2));
-                float newlat_phi = Mathf.Atan2(phi_y, phi_x);
-
-                float newlonDiff = Mathf.Atan2(Mathf.Sin(alpha0) * Mathf.Sin(sigma), Mathf.Cos(sigma));
-                float newlon = newlonDiff + lon0;
-
-                midGeo = new Sc_GeographicCoord(newlat_phi, newlon);
-                midpoint = midGeo.ToSpherical(thisPosSpherical.radial).ToCartesian();
-                */
-
-                // Plannar trigonometry method
-
-                /*
-                accelThetaPhi = new Vector2(destPosSC.polar - thisPosSpherical.polar, destPosSC.azimuthal - thisPosSpherical.azimuthal);
-                accelThetaPhi.Normalize();
-                accelThetaPhi *= maxAccel;
-
-                velocityThetaPhi += accelThetaPhi * Time.deltaTime;
-                if(velocityThetaPhi.magnitude > maxSpeedThetaPhi)
-                {
-                    velocityThetaPhi.Normalize();
-                    velocityThetaPhi *= maxSpeedThetaPhi;
-                }
-                if(accelThetaPhi.magnitude == 0f)
-                {
-                    velocityThetaPhi = Vector2.zero;
-                }
-
-                Sc_SphericalCoord nextPosSC = new Sc_SphericalCoord();
-                nextPosSC.radial = thisPosSpherical.radial;
-                nextPosSC.polar = thisPosSpherical.polar + velocityThetaPhi.x * Time.deltaTime;
-                nextPosSC.azimuthal = thisPosSpherical.azimuthal + velocityThetaPhi.y * Time.deltaTime;
-
-                Vector3 newPos = nextPosSC.ToCartesian();
-
-                
-
-                Vector3 planetSurfaceNormal = (newPos - mPlanet.transform.position).normalized; // surface normal at this newPos
-                surfaceNormal = planetSurfaceNormal;
-
-                //transform.rotation = Quaternion.LookRotation(newPos - transform.position, transform.up);
-                
-                transform.rotation = Quaternion.LookRotation(north - newPos, transform.up);
-                transform.position = newPos;
-                */
             }
         }
     }
 
     private void OnDrawGizmos()
     {
-        if (isMoving)
+        if (mIsMoving)
         {
             Gizmos.color = Color.yellow;
-            Gizmos.DrawSphere(destLocation, gizmoLen * 0.1f);
         }
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawSphere(midpoint, gizmoLen * 0.2f);
+        else
+        {
+            Gizmos.color = Color.green;
+        }
+        Gizmos.DrawSphere(destLocation, gizmoLen * 0.1f);
 
         Gizmos.DrawSphere(altLoc, gizmoLen * 0.25f);
         Gizmos.color = Color.blue;
