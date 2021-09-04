@@ -54,11 +54,11 @@ public class Sc_Utilities
         {
             Debug.LogError("polar is too large");
         }
-        if (spherical.azimuthal < -180)
+        if (spherical.azimuthal < 0)
         {
             Debug.LogError("azimuth is too small");
         }
-        if (180 < spherical.polar)
+        if (360 < spherical.polar)
         {
             Debug.LogError("azimuth is too large");
         }
