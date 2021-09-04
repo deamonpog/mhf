@@ -6,6 +6,8 @@ public class Sc_CameraMovement : MonoBehaviour
 {
     public GameObject mTargetPlanet;
 
+    public float mPlanetRadius;
+
     public float CameraMoveSpeed = 0.06f;
     public float CameraZoomSpeed = 20.0f;
     public float CameraRotateSpeed = 0.5f;
@@ -13,20 +15,31 @@ public class Sc_CameraMovement : MonoBehaviour
     Vector2 p1;
     Vector2 p2;
 
-    public GameObject cameraGroundPos;
-    public GameObject cameraArmPos;
+    public GameObject mArm;
+    public GameObject mCamera;
+
+    public void ChangePlanet(GameObject newPlanet)
+    {
+        mTargetPlanet = newPlanet;
+        mPlanetRadius = newPlanet.GetComponent<Sc_PlanetDescriptor>().mRadius;
+
+        mCamera.transform.localPosition = new Vector3(0, 20, -20);
+        mCamera.transform.localRotation = Quaternion.Euler(45, 0, 0);
+        mArm.transform.localPosition = new Vector3(0, mPlanetRadius, 0);
+        transform.localPosition = newPlanet.transform.position;
+    }
 
     // Start is called before the first frame update
     void Start()
     {
-        transform.position = mTargetPlanet.transform.position;
+        ChangePlanet(mTargetPlanet);
     }
 
     // Update is called once per frame
     void Update()
     {
         // Zoom in-out towards the camera direction
-        cameraArmPos.transform.position += cameraArmPos.transform.forward * CameraZoomSpeed * Input.GetAxis("Mouse ScrollWheel");
+        mCamera.transform.position += mCamera.transform.forward * CameraZoomSpeed * Input.GetAxis("Mouse ScrollWheel");
 
         // Rotate camera if MiddleMouseButton (MMB) is pressed. Move camera only if MMB button is not pressed.
         if (! Input.GetMouseButton(2))
