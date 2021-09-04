@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Building
   - Planet
+  - Unit
   layers:
   - Default
   - TransparentFX
