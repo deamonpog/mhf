@@ -133,15 +133,15 @@ public class Sc_Unit : MonoBehaviour
         }
         Gizmos.DrawSphere(destLocation, gizmoLen * 0.1f);
 
-        Gizmos.DrawSphere(altLoc, gizmoLen * 0.25f);
+        //Gizmos.DrawSphere(altLoc, gizmoLen * 0.25f);
         Gizmos.color = Color.blue;
-        Gizmos.DrawCube(convertBack, new Vector3(gizmoLen * 0.25f, gizmoLen * 0.25f, gizmoLen * 0.25f));
+        //Gizmos.DrawCube(convertBack, new Vector3(gizmoLen * 0.25f, gizmoLen * 0.25f, gizmoLen * 0.25f));
 
         var scnorth = Sc_SphericalCoord.FromCartesian(altLoc);
         scnorth.polar -= 1.0f * Mathf.Deg2Rad;
         Vector3 north = scnorth.ToCartesian();
-        Gizmos.DrawWireCube(north, new Vector3(gizmoLen * 0.25f, gizmoLen * 0.25f, gizmoLen * 0.25f));
-        Gizmos.DrawLine(altLoc, altLoc + (north - altLoc).normalized * gizmoLen * 2.0f );
+        //Gizmos.DrawWireCube(north, new Vector3(gizmoLen * 0.25f, gizmoLen * 0.25f, gizmoLen * 0.25f));
+        //Gizmos.DrawLine(altLoc, altLoc + (north - altLoc).normalized * gizmoLen * 2.0f );
 
 
         Gizmos.color = Color.magenta;
