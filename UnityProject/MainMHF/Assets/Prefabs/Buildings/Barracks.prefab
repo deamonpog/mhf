@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 8752608352846022318}
   - component: {fileID: 3776420410540238621}
   - component: {fileID: 2408503904579977087}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Capsule
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -60,7 +60,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 78f0fd78a116be740b2797bff1422597, type: 2}
+  - {fileID: 2100000, guid: cae68286f7004764a94ce717b2617756, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -108,7 +108,7 @@ GameObject:
   - component: {fileID: 6729791523722794076}
   - component: {fileID: 1834973676144093844}
   - component: {fileID: 8070244464093327682}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -156,7 +156,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 78f0fd78a116be740b2797bff1422597, type: 2}
+  - {fileID: 2100000, guid: c777e73bb60ab5a41b9a90312ba4f488, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -203,7 +203,7 @@ GameObject:
   - component: {fileID: 1188299460955812482}
   - component: {fileID: 5163845709756560662}
   - component: {fileID: 2987631100107263526}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Sphere (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -251,7 +251,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 78f0fd78a116be740b2797bff1422597, type: 2}
+  - {fileID: 2100000, guid: c777e73bb60ab5a41b9a90312ba4f488, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -295,10 +295,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1967589206107689315}
-  - component: {fileID: -1818313822033275880}
-  m_Layer: 0
-  m_Name: Barracks_Blueprint
-  m_TagString: Untagged
+  m_Layer: 7
+  m_Name: Barracks
+  m_TagString: Building
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -320,16 +319,3 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &-1818313822033275880
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5827301922051631637}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c7bb95d338b8f1d4fa765852a28abd15, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  prefab: {fileID: 5827301922051631637, guid: 982f8ac6a5ee68f4980d6ce43d170d09, type: 3}

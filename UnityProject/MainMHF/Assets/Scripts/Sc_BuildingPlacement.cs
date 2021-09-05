@@ -6,7 +6,10 @@ public class Sc_BuildingPlacement : MonoBehaviour
 {
     RaycastHit hit;
     Vector3 movePoint;
-    public GameObject prefab;
+    public GameObject CreatedBuildingPrefab;
+    public GameObject ValidObject;
+    public GameObject InvalidObject;
+    public float CollisionRadius = 1.0f;
 
     // Start is called before the first frame update
     void Start()
@@ -28,12 +31,25 @@ public class Sc_BuildingPlacement : MonoBehaviour
         {
             transform.position = hit.point;
             transform.rotation *= Quaternion.Euler( Vector3.Cross(transform.up, hit.normal) );
+
+            if(Physics.SphereCast(new Ray(ray.origin, ray.direction), CollisionRadius, out hit, 50000.0f, (1 << 7)))
+            {
+                ValidObject.SetActive(false);
+                InvalidObject.SetActive(true);
+            }
+            else
+            {
+                ValidObject.SetActive(true);
+                InvalidObject.SetActive(false);
+
+                if (Input.GetMouseButton(0))
+                {
+                    Instantiate(CreatedBuildingPrefab, transform.position, transform.rotation);
+                    Destroy(gameObject);
+                }
+            }
         }
 
-        if (Input.GetMouseButton(0))
-        {
-            Instantiate(prefab, transform.position, transform.rotation);
-            Destroy(gameObject);
-        }
     }
+
 }
