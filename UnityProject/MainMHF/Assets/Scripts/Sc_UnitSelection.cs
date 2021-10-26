@@ -48,19 +48,66 @@ public class Sc_UnitSelection : MonoBehaviour
     void Update()
     {
         RaycastHit hit;
-        if (Input.GetMouseButtonDown(0))
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+        if (Input.GetButtonDown("SelectClick"))
         {
-            Ray ray2 = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray2, out hit, 50000.0f, (1 << 6)))
+            if (!Input.GetButton("MoreSelect"))
+            {
+                RemoveAllFromSelection();
+            }
+
+            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 6)))
             {
                 GameObject go = hit.collider.gameObject;
                 AddToSelection(go);
             }
-            else
+        }
+
+        if (Input.GetButtonDown("ActionClick"))
+        {
+            
+            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 8)))
             {
-                RemoveAllFromSelection();
+                foreach (KeyValuePair<int, GameObject> pair in selectedTable)
+                {
+                    if (pair.Value != null)
+                    {
+                        Sc_Unit unit = selectedTable[pair.Key].GetComponent<Sc_Unit>();
+                        unit.mIsMoving = true;
+                        unit.mSpeed = 0f;
+                        unit.mV3_Destination = hit.point;
+                        unit.mGeo_Destination = Sc_SphericalCoord.FromCartesian(hit.point).ToGeographic();
+                    }
+                }
+            }
+
+            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 6)))
+            {
+                foreach (KeyValuePair<int, GameObject> pair in selectedTable)
+                {
+                    if (pair.Value != null)
+                    {
+                        Sc_Unit unit = selectedTable[pair.Key].GetComponent<Sc_Unit>();
+                        unit.mTarget = hit.point;
+                        unit.mIsAttacking = true;
+                    }
+                }
             }
         }
+    }
+
+    private void OnDrawGizmos()
+    {
+        //Gizmos.DrawSphere(altLoc, gizmoLen * 0.25f);
+        //Gizmos.color = Color.blue;
+        //Gizmos.DrawCube(convertBack, new Vector3(gizmoLen * 0.25f, gizmoLen * 0.25f, gizmoLen * 0.25f));
+
+        //var scnorth = Sc_SphericalCoord.FromCartesian(altLoc);
+        //scnorth.polar -= 1.0f * Mathf.Deg2Rad;
+        //Vector3 north = scnorth.ToCartesian();
+        //Gizmos.DrawWireCube(north, new Vector3(gizmoLen * 0.25f, gizmoLen * 0.25f, gizmoLen * 0.25f));
+        //Gizmos.DrawLine(altLoc, altLoc + (north - altLoc).normalized * gizmoLen * 2.0f );
 
     }
 }

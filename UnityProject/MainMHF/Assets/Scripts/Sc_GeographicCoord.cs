@@ -5,7 +5,7 @@ using UnityEngine;
 [System.Serializable]
 public class Sc_GeographicCoord
 {
-    [Tooltip("Latitude range between 0 to PI. Latitude = (PI / 2) - Polar.")]
+    [Tooltip("Latitude range between -PI/2 to +PI/2. Latitude = (PI / 2) - Polar.")]
     public float lat;
 
     [Tooltip("Longitude / Azimuthal range between 0 to 2PI")]

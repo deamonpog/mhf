@@ -21,7 +21,7 @@ public class Sc_CameraMovement : MonoBehaviour
     public void ChangePlanet(GameObject newPlanet)
     {
         mTargetPlanet = newPlanet;
-        mPlanetRadius = newPlanet.GetComponent<Sc_PlanetDescriptor>().mRadius;
+        mPlanetRadius = newPlanet.GetComponent<Sc_Planet>().planetRadius;
 
         mCamera.transform.localPosition = new Vector3(0, 20, -20);
         mCamera.transform.localRotation = Quaternion.Euler(45, 0, 0);
