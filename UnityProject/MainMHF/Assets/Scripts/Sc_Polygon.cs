@@ -10,6 +10,7 @@ public partial class Sc_Planet
         public int[] trianglesList;
         public HashSet<int> oldIdentifiers;
         public float meanHeightSqred;
+        public Vector3 center;
 
         public Sc_Polygon(int in_identifier, List<int> in_vertIndexList, int[] in_trianglesList)
         {
@@ -59,11 +60,15 @@ public partial class Sc_Planet
 
         public float calculateMeanHeightSqred(Vector3[] indexedVertices)
         {
+            //meanHeightSqred = 0.0f;
             for (int i = 0; i < trianglesList.Length; ++i)
             {
-                meanHeightSqred += indexedVertices[trianglesList[i]].sqrMagnitude;
+                center += indexedVertices[trianglesList[i]];
+                //meanHeightSqred += indexedVertices[trianglesList[i]].sqrMagnitude;
             }
-            meanHeightSqred /= trianglesList.Length;
+            //meanHeightSqred /= trianglesList.Length;
+            center /= trianglesList.Length;
+            meanHeightSqred = center.magnitude;
             return meanHeightSqred;
         }
 
@@ -91,7 +96,7 @@ public partial class Sc_Planet
             float angle_B_pA = pA.getAngleAtPoint(edge.B, indexedVertices);
             float angle_B_pB = pB.getAngleAtPoint(edge.B, indexedVertices);
 
-            return ((angle_A_pA + angle_A_pB) < Mathf.PI) && ((angle_B_pA + angle_B_pB) < Mathf.PI);
+            return ((angle_A_pA + angle_A_pB) <= Mathf.PI) && ((angle_B_pA + angle_B_pB) <= Mathf.PI);
         }
 
         public static Sc_Polygon getMergedPolygon(int identifier, Sc_Polygon pA, Sc_Polygon pB, SortedTwoIntegers edge, Vector3[] indexedVertices)

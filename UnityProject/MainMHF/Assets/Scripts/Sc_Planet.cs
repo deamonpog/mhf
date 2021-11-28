@@ -247,7 +247,7 @@ public partial class Sc_Planet : MonoBehaviour
         return new BasicMeshData(verts.ToArray(), triangles.ToArray());
     }
 
-    void GenerateNavMesh(BasicMeshData in_BasicMeshData)
+    Dictionary<int, Dictionary<int, float>> GenerateNavMesh(BasicMeshData in_BasicMeshData)
     {
         // Destroy existing navmesh and create a new one.
         if (navMesh == null)
@@ -381,11 +381,70 @@ public partial class Sc_Planet : MonoBehaviour
         print(string.Format("All Polygons Count : {0}", cur_polygon));
         print(string.Format("Edges Remaining : {0}", temp_edge_to_polygon.Count));
 
-        // Cleanup unused
-        edges_removed.Clear();
-        temp_edge_to_polygon.Clear();
-
         print("Generating...");
+
+        // Generate graph between polygons
+        Dictionary<int, Dictionary<int, float>> NavMeshGraph = new Dictionary<int, Dictionary<int, float>>();
+
+        Transform graphTransform = transform.Find("Graph");
+        GameObject graphgo;
+        if (graphTransform == null)
+        {
+            graphgo = new GameObject("Graph");
+            graphgo.transform.parent = gameObject.transform;
+        }
+        else
+        {
+            graphgo = graphTransform.gameObject;
+        }
+        // Destroy all children in graph
+        while (graphgo.transform.childCount > 0)
+        {
+            DestroyImmediate(graphgo.transform.GetChild(0).gameObject);
+        }
+
+        foreach (var kvp in temp_edge_to_polygon)
+        {
+            Sc_Polygon pA = temp_indexed_polygons_dict[kvp.Value[0]];
+            Sc_Polygon pB = temp_indexed_polygons_dict[kvp.Value[1]];
+            float distAB = Vector3.Dot(pA.center.normalized, pB.center.normalized);
+
+            if (!NavMeshGraph.ContainsKey(pA.identifier))
+            {
+                NavMeshGraph.Add(pA.identifier, new Dictionary<int, float>());
+                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.name = "Node:" + pA.identifier;
+                go.transform.position = pA.center.normalized * pA.center.magnitude * 1.1f;
+                go.transform.localScale = Vector3.one * 2.0f;
+                go.transform.parent = graphgo.transform;
+            }
+            if (!NavMeshGraph.ContainsKey(pB.identifier))
+            {
+                NavMeshGraph.Add(pB.identifier, new Dictionary<int, float>());
+                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.name = "Node:" + pB.identifier;
+                go.transform.position = pB.center.normalized * pB.center.magnitude * 1.1f;
+                go.transform.localScale = Vector3.one * 2.0f;
+                go.transform.parent = graphgo.transform;
+            }
+
+            if (!NavMeshGraph[pA.identifier].ContainsKey(pB.identifier)) 
+            {
+                NavMeshGraph[pA.identifier].Add(pB.identifier, distAB);
+                GameObject go = new GameObject(string.Format("Edge_{0}_{1}", pA.identifier, pB.identifier));
+                go.transform.position = pA.center;
+                go.transform.parent = graphgo.transform;
+                LineRenderer lr = go.AddComponent<LineRenderer>();
+                lr.SetPosition(0, pA.center.normalized * pA.center.magnitude * 1.1f);
+                lr.SetPosition(1, pB.center.normalized * pB.center.magnitude * 1.1f);
+            }
+
+            if (!NavMeshGraph[pB.identifier].ContainsKey(pA.identifier)) 
+            { 
+                NavMeshGraph[pB.identifier].Add(pA.identifier, distAB); 
+            }
+
+        }
 
         // Create navmesh child if it doesn't exist
         string naveMeshName = "navMesh";
@@ -433,6 +492,8 @@ public partial class Sc_Planet : MonoBehaviour
 
             var go = new GameObject(string.Format("M_i{0}_p{1}", poly_count, kvp.Key));
             go.transform.parent = navMeshGO.transform;
+            go.layer = 9; // set NavMesh layer
+            go.tag = "NavMesh";
             MeshRenderer mr = go.AddComponent<MeshRenderer>();
             // load color material for navmesh displaying
             Material yourMaterial = new Material(Shader.Find("Standard"));
@@ -441,12 +502,14 @@ public partial class Sc_Planet : MonoBehaviour
             mr.material = yourMaterial;
             MeshFilter mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = m;
-            //go.transform.localScale = Vector3.one * 1.05f;
+            go.transform.localScale = Vector3.one * 1.08f;
 
             ++poly_count;
         }
 
         print(string.Format("New Polygons Count : {0}", poly_count));
+
+        return NavMeshGraph;
     }
 
 
