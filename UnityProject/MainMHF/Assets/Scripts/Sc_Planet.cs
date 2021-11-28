@@ -20,8 +20,6 @@ public partial class Sc_Planet : MonoBehaviour
     public Texture2D texture_heightMap;
     public Material material;
 
-    private List<Mesh> navMesh;
-
     [Range(2, 30)]
     public int navMeshResolution = 10;
 
@@ -249,21 +247,6 @@ public partial class Sc_Planet : MonoBehaviour
 
     Dictionary<int, Dictionary<int, float>> GenerateNavMesh(BasicMeshData in_BasicMeshData)
     {
-        // Destroy existing navmesh and create a new one.
-        if (navMesh == null)
-        {
-            navMesh = new List<Mesh>();
-        }
-        else
-        {
-            foreach (var m in navMesh)
-            {
-                m.Clear();
-                DestroyImmediate(m);
-            }
-            navMesh.Clear();
-        }
-
         // List of Polygons with an index for each polygon as the key
         Dictionary<int, Sc_Polygon> temp_indexed_polygons_dict = new Dictionary<int, Sc_Polygon>();
         // Old invalid polygon indexes
@@ -488,7 +471,7 @@ public partial class Sc_Planet : MonoBehaviour
             kvp.Value.oldIdentifiers.Clear();
             kvp.Value.pointList.Clear();
 
-            navMesh.Add(m);
+            //navMesh.Add(m);
 
             var go = new GameObject(string.Format("M_i{0}_p{1}", poly_count, kvp.Key));
             go.transform.parent = navMeshGO.transform;
