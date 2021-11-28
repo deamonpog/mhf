@@ -245,10 +245,52 @@ public partial class Sc_Planet : MonoBehaviour
         return new BasicMeshData(verts.ToArray(), triangles.ToArray());
     }
 
+    GameObject refreshGameObject(string in_goname)
+    {
+        Transform graphTransform = transform.Find(in_goname);
+        GameObject graphgo;
+        if (graphTransform == null)
+        {
+            graphgo = new GameObject("Graph");
+            graphgo.transform.parent = gameObject.transform;
+        }
+        else
+        {
+            graphgo = graphTransform.gameObject;
+        }
+        // Destroy all children in graph
+        while (graphgo.transform.childCount > 0)
+        {
+            DestroyImmediate(graphgo.transform.GetChild(0).gameObject);
+        }
+        return graphgo;
+    }
+
+    GameObject createPrimitiveGameObject(PrimitiveType in_PrimitiveType, string in_GOName, Vector3 in_Position, Vector3 in_Scale, Transform in_Parent) {
+        GameObject go = GameObject.CreatePrimitive(in_PrimitiveType);
+        go.name = in_GOName;
+        go.transform.position = in_Position;
+        go.transform.localScale = in_Scale;
+        go.transform.parent = in_Parent;
+        return go;
+    }
+
+    GameObject createLineGameObject(string in_GOName, Vector3 in_Start, Vector3 in_End, Transform in_Parent)
+    {
+        GameObject go = new GameObject(in_GOName);
+        go.transform.position = (in_Start + in_End) / 2.0f;
+        go.transform.parent = in_Parent;
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        lr.SetPosition(0, in_Start);
+        lr.SetPosition(1, in_End);
+        return go;
+    }
+
     Dictionary<int, Dictionary<int, float>> GenerateNavMesh(BasicMeshData in_BasicMeshData)
     {
         // List of Polygons with an index for each polygon as the key
         Dictionary<int, Sc_Polygon> temp_indexed_polygons_dict = new Dictionary<int, Sc_Polygon>();
+
         // Old invalid polygon indexes
         HashSet<int> temp_old_polygons = new HashSet<int>();
 
@@ -265,7 +307,7 @@ public partial class Sc_Planet : MonoBehaviour
             int v2 = in_BasicMeshData.triangles[i + 2];
 
             Sc_Polygon newPolyObj = new Sc_Polygon(cur_polygon, new int[] { v0, v1, v2 }, new int[] { v0, v1, v2 });
-            newPolyObj.calculateMeanHeightSqred(in_BasicMeshData.vertices);
+            newPolyObj.calculateMeanStatistics(in_BasicMeshData.vertices);
             temp_indexed_polygons_dict.Add(cur_polygon, newPolyObj);
 
             SortedTwoIntegers[] triangle_edges = new SortedTwoIntegers[] { new SortedTwoIntegers(v0, v1), new SortedTwoIntegers(v0, v2), new SortedTwoIntegers(v1, v2) };
@@ -311,7 +353,7 @@ public partial class Sc_Planet : MonoBehaviour
                 Debug.Assert(pB.identifier != -1, string.Format("Error: PolygonID B is {1} on Edge{0}", edge, pB.identifier));
                 Debug.Assert(pA.identifier != pB.identifier, string.Format("Error: Same Polygon {1}, {2} found on Edge{0}", edge, pA.identifier, pB.identifier));
 
-                if (Mathf.Abs(pA.meanHeightSqred - pB.meanHeightSqred) < navHeightDiff && Sc_Polygon.isPolygonMergeConvex(pA, pB, edge, in_BasicMeshData.vertices))
+                if (Mathf.Abs(pA.meanHeightSqrd - pB.meanHeightSqrd) < navHeightDiff && Sc_Polygon.isPolygonMergeConvex(pA, pB, edge, in_BasicMeshData.vertices))
                 {
                     Sc_Polygon pCombined = Sc_Polygon.getMergedPolygon(cur_polygon, pA, pB, edge, in_BasicMeshData.vertices);
 
@@ -369,22 +411,7 @@ public partial class Sc_Planet : MonoBehaviour
         // Generate graph between polygons
         Dictionary<int, Dictionary<int, float>> NavMeshGraph = new Dictionary<int, Dictionary<int, float>>();
 
-        Transform graphTransform = transform.Find("Graph");
-        GameObject graphgo;
-        if (graphTransform == null)
-        {
-            graphgo = new GameObject("Graph");
-            graphgo.transform.parent = gameObject.transform;
-        }
-        else
-        {
-            graphgo = graphTransform.gameObject;
-        }
-        // Destroy all children in graph
-        while (graphgo.transform.childCount > 0)
-        {
-            DestroyImmediate(graphgo.transform.GetChild(0).gameObject);
-        }
+        GameObject graphgo = refreshGameObject("Graph");
 
         foreach (var kvp in temp_edge_to_polygon)
         {
@@ -395,31 +422,21 @@ public partial class Sc_Planet : MonoBehaviour
             if (!NavMeshGraph.ContainsKey(pA.identifier))
             {
                 NavMeshGraph.Add(pA.identifier, new Dictionary<int, float>());
-                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                go.name = "Node:" + pA.identifier;
-                go.transform.position = pA.center.normalized * pA.center.magnitude * 1.1f;
-                go.transform.localScale = Vector3.one * 2.0f;
-                go.transform.parent = graphgo.transform;
+                createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pA.identifier, pA.center.normalized * pA.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
             }
             if (!NavMeshGraph.ContainsKey(pB.identifier))
             {
                 NavMeshGraph.Add(pB.identifier, new Dictionary<int, float>());
-                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                go.name = "Node:" + pB.identifier;
-                go.transform.position = pB.center.normalized * pB.center.magnitude * 1.1f;
-                go.transform.localScale = Vector3.one * 2.0f;
-                go.transform.parent = graphgo.transform;
+                createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pB.identifier, pB.center.normalized * pB.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
             }
 
             if (!NavMeshGraph[pA.identifier].ContainsKey(pB.identifier)) 
             {
                 NavMeshGraph[pA.identifier].Add(pB.identifier, distAB);
-                GameObject go = new GameObject(string.Format("Edge_{0}_{1}", pA.identifier, pB.identifier));
-                go.transform.position = pA.center;
-                go.transform.parent = graphgo.transform;
-                LineRenderer lr = go.AddComponent<LineRenderer>();
-                lr.SetPosition(0, pA.center.normalized * pA.center.magnitude * 1.1f);
-                lr.SetPosition(1, pB.center.normalized * pB.center.magnitude * 1.1f);
+                createLineGameObject(
+                    string.Format("Edge_{0}_{1}", pA.identifier, pB.identifier), 
+                    pA.center.normalized * pA.center.magnitude * 1.1f, 
+                    pB.center.normalized * pB.center.magnitude * 1.1f, graphgo.transform);
             }
 
             if (!NavMeshGraph[pB.identifier].ContainsKey(pA.identifier)) 
