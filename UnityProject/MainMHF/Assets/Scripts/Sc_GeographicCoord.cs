@@ -37,4 +37,14 @@ public class Sc_GeographicCoord
     {
         return Sc_Utilities.getGeographicCoordinates(spherical);
     }
+
+    public static float AngularDistance(Sc_GeographicCoord a, Sc_GeographicCoord b)
+    {
+        //float delta_lat = b.lat - a.lat;
+        float delta_lon = b.lon - a.lon;
+        float mean_lat = (a.lat + b.lat) / 2.0f;
+
+        float dist = Mathf.Acos(Mathf.Sin(a.lat) * Mathf.Sin(b.lat) + Mathf.Cos(a.lat) * Mathf.Cos(b.lat) * Mathf.Cos(delta_lon)); 
+        return dist;
+    }
 }

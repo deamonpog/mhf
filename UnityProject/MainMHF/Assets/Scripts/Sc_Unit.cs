@@ -32,7 +32,7 @@ public class Sc_Unit : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        mPlanetRadius = mPlanet.GetComponent<Sc_PlanetDescriptor>().mRadius;
+        mPlanetRadius = mPlanet.GetComponent<Sc_Planet>().planetRadius;
 
         // setup position and orientation
         Vector3 planetSurfaceNormal = (transform.position - mPlanet.transform.position).normalized;
@@ -71,7 +71,8 @@ public class Sc_Unit : MonoBehaviour
     {
         if (mIsMoving)
         {
-            if(Vector3.Distance(mV3_Destination, transform.position) < mUnitRadius)
+            thisGeo = Sc_SphericalCoord.FromCartesian(transform.position).ToGeographic();
+            if (Sc_GeographicCoord.AngularDistance(thisGeo, mGeo_Destination) < 0.01)
             {
                 mIsMoving = false;
                 mSpeed = 0f;

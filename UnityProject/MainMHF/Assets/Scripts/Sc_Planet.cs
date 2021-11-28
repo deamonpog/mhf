@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using EasyButtons;
 
-public class Sc_Planet : MonoBehaviour
+public partial class Sc_Planet : MonoBehaviour
 {
     [Range(2, 512)]
     public int resolution = 2;
@@ -32,7 +32,7 @@ public class Sc_Planet : MonoBehaviour
     struct BasicMeshData
     {
         public Vector3[] vertices;
-        public int [] triangles;
+        public int[] triangles;
         public Vector3[] normals;
         public Vector3[] uvs;
 
@@ -45,48 +45,10 @@ public class Sc_Planet : MonoBehaviour
         }
     }
 
-    struct SortedTwoIntegers
-    {
-        public int A;
-        public int B;
-
-        public SortedTwoIntegers(int iA, int iB)
-        {
-            if (iA < iB)
-            {
-                this.A = iA;
-                this.B = iB;
-            }
-            else
-            {
-                this.A = iB;
-                this.B = iA;
-            }
-        }
-
-        public override string ToString()
-        {
-            return string.Format("<{0},{1}>", A, B);
-        }
-    }
-
-    class TwoIntegersComparer : IEqualityComparer<SortedTwoIntegers>
-    {
-        public bool Equals(SortedTwoIntegers x, SortedTwoIntegers y)
-        {
-            return x.A == y.A && x.B == y.B;
-        }
-
-        public int GetHashCode(SortedTwoIntegers obj)
-        {
-            return obj.A + obj.B * 100;
-        }
-    }
-
     [Button]
     void RecalculateAndGenerate()
     {
-        UnityEditor.EditorUtility.DisplayProgressBar("Simple Progress Bar", "Doing some work...", 0.0f);
+        //UnityEditor.EditorUtility.DisplayProgressBar("Simple Progress Bar", "Doing some work...", 0.0f);
 
         // Calculate the mesh triangles and vertices for a unit cube at origin
         BasicMeshData planet_GeomMesh = GetBaseCube(resolution);
@@ -98,7 +60,7 @@ public class Sc_Planet : MonoBehaviour
         planet_NavMesh = CalculateWithPlanetHeightMap(planet_NavMesh);
         GenerateNavMesh(planet_NavMesh);
 
-        UnityEditor.EditorUtility.ClearProgressBar();
+        //UnityEditor.EditorUtility.ClearProgressBar();
     }
 
     Mesh CreateMesh(BasicMeshData in_UnitCubeMeshData)
@@ -114,6 +76,8 @@ public class Sc_Planet : MonoBehaviour
         {
             planet_GameObject = new GameObject(planet_gameObjectName);
             planet_GameObject.transform.parent = this.transform;
+            planet_GameObject.layer = 8; // set planet layer
+            planet_GameObject.tag = "Planet";
         }
         else
         {
@@ -152,6 +116,12 @@ public class Sc_Planet : MonoBehaviour
         mesh.normals = in_UnitCubeMeshData.normals;
         mesh.SetUVs(0, in_UnitCubeMeshData.uvs);
         mesh.triangles = in_UnitCubeMeshData.triangles;
+
+        // Add mesh collider component
+        if (planet_GameObject.GetComponent<MeshCollider>() == null)
+        {
+            MeshCollider planet_meshCollider = planet_GameObject.AddComponent<MeshCollider>();
+        }
 
         return mesh;
     }
@@ -249,9 +219,9 @@ public class Sc_Planet : MonoBehaviour
         List<int> triangles = new List<int>();
         int nextIndex = 0;
 
-        void addFace(Vector3 [] in_verts, List<int> in_triangles)
-        { 
-            for(int i = 0; i < in_verts.Length; ++i)
+        void addFace(Vector3[] in_verts, List<int> in_triangles)
+        {
+            for (int i = 0; i < in_verts.Length; ++i)
             {
                 if (!vdict.ContainsKey(in_verts[i]))
                 {
@@ -261,7 +231,7 @@ public class Sc_Planet : MonoBehaviour
                 }
             }
 
-            for(int i = 0; i < in_triangles.Count; ++i)
+            for (int i = 0; i < in_triangles.Count; ++i)
             {
                 triangles.Add(vdict[in_verts[in_triangles[i]]]);
             }
@@ -278,6 +248,210 @@ public class Sc_Planet : MonoBehaviour
     }
 
     void GenerateNavMesh(BasicMeshData in_BasicMeshData)
+    {
+        // Destroy existing navmesh and create a new one.
+        if (navMesh == null)
+        {
+            navMesh = new List<Mesh>();
+        }
+        else
+        {
+            foreach (var m in navMesh)
+            {
+                m.Clear();
+                DestroyImmediate(m);
+            }
+            navMesh.Clear();
+        }
+
+        // List of Polygons with an index for each polygon as the key
+        Dictionary<int, Sc_Polygon> temp_indexed_polygons_dict = new Dictionary<int, Sc_Polygon>();
+        // Old invalid polygon indexes
+        HashSet<int> temp_old_polygons = new HashSet<int>();
+
+        // Used for finding polygons with shared edge.
+        Dictionary<SortedTwoIntegers, int[]> temp_edge_to_polygon = new Dictionary<SortedTwoIntegers, int[]>(new TwoIntegersComparer());
+
+        print("Initializing...");
+        // Initialize polygon list and edge_to_polygon dicit using the initial triangles.
+        int cur_polygon = 0;
+        for (int i = 0; i < in_BasicMeshData.triangles.Length; i += 3)
+        {
+            int v0 = in_BasicMeshData.triangles[i];
+            int v1 = in_BasicMeshData.triangles[i + 1];
+            int v2 = in_BasicMeshData.triangles[i + 2];
+
+            Sc_Polygon newPolyObj = new Sc_Polygon(cur_polygon, new int[] { v0, v1, v2 }, new int[] { v0, v1, v2 });
+            newPolyObj.calculateMeanHeightSqred(in_BasicMeshData.vertices);
+            temp_indexed_polygons_dict.Add(cur_polygon, newPolyObj);
+
+            SortedTwoIntegers[] triangle_edges = new SortedTwoIntegers[] { new SortedTwoIntegers(v0, v1), new SortedTwoIntegers(v0, v2), new SortedTwoIntegers(v1, v2) };
+            foreach (SortedTwoIntegers sti_edge in triangle_edges)
+            {
+                if (temp_edge_to_polygon.ContainsKey(sti_edge))
+                {
+                    Debug.Assert(temp_edge_to_polygon[sti_edge][1] == -1, "Error: Edge already has two polygons!");
+                    temp_edge_to_polygon[sti_edge][1] = cur_polygon;
+                }
+                else
+                {
+                    //print(string.Format("E{0} is not in e2t, adding to it.", sti_edge));
+                    temp_edge_to_polygon.Add(sti_edge, new int[] { cur_polygon, -1 });
+                }
+            }
+            ++cur_polygon;
+        }
+
+        print("Merging...");
+        // Merge by each edge until no merges are posssible 
+        bool merge_possible = true;
+        List<SortedTwoIntegers> edges_removed = new List<SortedTwoIntegers>();
+        int count_edges_removed = 0;
+        while (merge_possible)
+        {
+            // set state as false for next iteration
+            merge_possible = false;
+
+            // Select a mergable edge from all the edges
+            //List<SortedTwoIntegers> shuffled_edge_list = new List<SortedTwoIntegers>(temp_edge_to_polygon.Keys);
+            //Sc_Utilities.Shuffle(shuffled_edge_list);
+            //foreach (SortedTwoIntegers edge in shuffled_edge_list)
+            foreach(var kvp in temp_edge_to_polygon)
+            {
+                SortedTwoIntegers edge = kvp.Key;
+
+                int[] polygonIdentifiers = temp_edge_to_polygon[edge];
+                Sc_Polygon pA = temp_indexed_polygons_dict[polygonIdentifiers[0]];
+                Sc_Polygon pB = temp_indexed_polygons_dict[polygonIdentifiers[1]];
+
+                Debug.Assert(pA.identifier != -1, string.Format("Error: PolygonID A is {1} on Edge{0}", edge, pA.identifier));
+                Debug.Assert(pB.identifier != -1, string.Format("Error: PolygonID B is {1} on Edge{0}", edge, pB.identifier));
+                Debug.Assert(pA.identifier != pB.identifier, string.Format("Error: Same Polygon {1}, {2} found on Edge{0}", edge, pA.identifier, pB.identifier));
+
+                if (Mathf.Abs(pA.meanHeightSqred - pB.meanHeightSqred) < navHeightDiff && Sc_Polygon.isPolygonMergeConvex(pA, pB, edge, in_BasicMeshData.vertices))
+                {
+                    Sc_Polygon pCombined = Sc_Polygon.getMergedPolygon(cur_polygon, pA, pB, edge, in_BasicMeshData.vertices);
+
+                    // set old identifiers for the polygon which represent the old small polygons that created this polygon
+                    pCombined.oldIdentifiers.UnionWith(pA.oldIdentifiers);
+                    pCombined.oldIdentifiers.UnionWith(pB.oldIdentifiers);
+                    pCombined.oldIdentifiers.Add(pA.identifier);
+                    pCombined.oldIdentifiers.Add(pB.identifier);
+
+                    // replace old index references with the current new polygon
+                    foreach (int oldId in pCombined.oldIdentifiers)
+                    {
+                        temp_indexed_polygons_dict.Remove(oldId);
+                        temp_indexed_polygons_dict.Add(oldId, pCombined);
+                    }
+
+                    // mark pA and pB as old references
+                    temp_old_polygons.Add(pA.identifier);
+                    temp_old_polygons.Add(pB.identifier);
+
+                    // add the current new polygon to the index
+                    temp_indexed_polygons_dict.Add(cur_polygon, pCombined);
+
+                    // clear the old pA and pB polygons as they are not of use anymore
+                    pA.Clear();
+                    pB.Clear();
+
+                    ++cur_polygon;
+
+                    merge_possible = true;
+
+                    edges_removed.Add(edge);
+
+                    ++count_edges_removed;
+
+                    break;
+                }
+            }
+
+            // remove the merged edges
+            foreach (SortedTwoIntegers e in edges_removed)
+            {
+                temp_edge_to_polygon.Remove(e);
+            }
+            edges_removed.Clear();
+        }
+
+        print(string.Format("Removed {0} Edges.", count_edges_removed));
+        print(string.Format("Old Polygons Count : {0}", temp_old_polygons.Count));
+        print(string.Format("All Polygons Count : {0}", cur_polygon));
+        print(string.Format("Edges Remaining : {0}", temp_edge_to_polygon.Count));
+
+        // Cleanup unused
+        edges_removed.Clear();
+        temp_edge_to_polygon.Clear();
+
+        print("Generating...");
+
+        // Create navmesh child if it doesn't exist
+        string naveMeshName = "navMesh";
+        Transform navMeshTransform = transform.Find(naveMeshName);
+        GameObject navMeshGO;
+        if (navMeshTransform == null)
+        {
+            navMeshGO = new GameObject(naveMeshName);
+            navMeshGO.transform.parent = gameObject.transform;
+        }
+        else
+        {
+            navMeshGO = navMeshTransform.gameObject;
+        }
+
+        // Destroy all children in navmesh
+        while (navMeshGO.transform.childCount > 0)
+        {
+            DestroyImmediate(navMeshGO.transform.GetChild(0).gameObject);
+        }
+
+        Color[] colorArray = new Color[] { Color.green, Color.cyan, Color.blue, Color.yellow, Color.red, Color.magenta, Color.white };
+
+        int poly_count = 0;
+        foreach (KeyValuePair<int, Sc_Polygon> kvp in temp_indexed_polygons_dict)
+        {
+            if (temp_old_polygons.Contains(kvp.Key))
+            {
+                continue;
+            }
+
+            Mesh m = new Mesh();
+            m.Clear();
+            m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            m.vertices = in_BasicMeshData.vertices;
+            m.normals = in_BasicMeshData.normals;
+            m.SetUVs(0, in_BasicMeshData.uvs);
+            m.triangles = kvp.Value.trianglesList;
+
+            // cleanup polygon
+            kvp.Value.oldIdentifiers.Clear();
+            kvp.Value.pointList.Clear();
+
+            navMesh.Add(m);
+
+            var go = new GameObject(string.Format("M_i{0}_p{1}", poly_count, kvp.Key));
+            go.transform.parent = navMeshGO.transform;
+            MeshRenderer mr = go.AddComponent<MeshRenderer>();
+            // load color material for navmesh displaying
+            Material yourMaterial = new Material(Shader.Find("Standard"));
+            float h = (float)(poly_count + 1) / (float)(cur_polygon - temp_old_polygons.Count);
+            yourMaterial.color = (poly_count >= colorArray.Length) ? Color.HSVToRGB(h, 1f, 1f) : colorArray[poly_count];
+            mr.material = yourMaterial;
+            MeshFilter mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = m;
+            //go.transform.localScale = Vector3.one * 1.05f;
+
+            ++poly_count;
+        }
+
+        print(string.Format("New Polygons Count : {0}", poly_count));
+    }
+
+
+
+    void GenerateHeightMesh(BasicMeshData in_BasicMeshData)
     {
         // Destroy existing navmesh and create a new one.
         if (navMesh == null)
@@ -322,7 +496,7 @@ public class Sc_Planet : MonoBehaviour
             Vector3 curTriCenter = calculateCenter(in_BasicMeshData, v0, v1, v2);
             float curHeight = curTriCenter.magnitude;
 
-            SortedTwoIntegers[] triangle_edges = new SortedTwoIntegers[]{new SortedTwoIntegers(v0, v1), new SortedTwoIntegers(v0, v2), new SortedTwoIntegers(v1, v2)};
+            SortedTwoIntegers[] triangle_edges = new SortedTwoIntegers[] { new SortedTwoIntegers(v0, v1), new SortedTwoIntegers(v0, v2), new SortedTwoIntegers(v1, v2) };
 
             //print(string.Format("T{0}", cur_triangle));
             //string msg = "Edges: ";
@@ -337,10 +511,15 @@ public class Sc_Planet : MonoBehaviour
                     int otherTriangle = temp_edge_to_triangle[sti_edge];
                     //print(string.Format("Other is T{0}", otherTriangle));
 
-                    Vector3 otherTriCenter = calculateCenter(in_BasicMeshData, in_BasicMeshData.triangles[otherTriangle * 3], in_BasicMeshData.triangles[otherTriangle * 3 + 1], in_BasicMeshData.triangles[otherTriangle * 3 + 2]);
+                    int vo0 = in_BasicMeshData.triangles[otherTriangle * 3];
+                    int vo1 = in_BasicMeshData.triangles[otherTriangle * 3 + 1];
+                    int vo2 = in_BasicMeshData.triangles[otherTriangle * 3 + 2];
 
-                    //if(otherTriangle == 11 | otherTriangle == 12 | cur_triangle == 11 | cur_triangle == 12) { print(string.Format("T{0} => T{1} Height diff: {2}", cur_triangle, otherTriangle, Mathf.Abs(otherTriCenter.magnitude - curHeight))); }
-                    if(Mathf.Abs(otherTriCenter.magnitude - curHeight) < navHeightDiff)
+                    Vector3 otherTriCenter = calculateCenter(in_BasicMeshData, vo0, vo1, vo2);
+
+                    bool are_neighbors = Mathf.Abs(otherTriCenter.magnitude - curHeight) < navHeightDiff;
+
+                    if (are_neighbors)
                     {
                         //print("same height");
                         edgeList.Add(new SortedTwoIntegers(cur_triangle, otherTriangle));
@@ -366,7 +545,7 @@ public class Sc_Planet : MonoBehaviour
                                 temp_triangle_2_group.Add(otherTriangle, temp_triangle_2_group[cur_triangle]);
                             }
                         }
-                        else if(temp_triangle_2_group.ContainsKey(otherTriangle))
+                        else if (temp_triangle_2_group.ContainsKey(otherTriangle))
                         {
                             //print("t2g contains OTHER key only.");
                             //print(string.Format("T{0} -> G{1}", cur_triangle, temp_triangle_2_group[otherTriangle]));
@@ -408,7 +587,7 @@ public class Sc_Planet : MonoBehaviour
 
         print("=============================== Removing Aliases =======================================");
 
-        Dictionary<int,HashSet<int>> groupSetDict = new Dictionary<int,HashSet<int>>();
+        Dictionary<int, HashSet<int>> groupSetDict = new Dictionary<int, HashSet<int>>();
 
         // replace indexes that represent the same group with a single index
         int setId = 0;
@@ -416,7 +595,7 @@ public class Sc_Planet : MonoBehaviour
         {
             int id_a = -1;
             int id_b = -1;
-            foreach(var g in groupSetDict)
+            foreach (var g in groupSetDict)
             {
                 if (g.Value.Contains(aliasedGroups.A))
                 {
@@ -428,7 +607,7 @@ public class Sc_Planet : MonoBehaviour
                 }
             }
 
-            if(id_a == -1)
+            if (id_a == -1)
             {
                 // A is not in a set.
                 if (id_b == -1)
@@ -457,7 +636,7 @@ public class Sc_Planet : MonoBehaviour
                 else
                 {
                     // B is in a set.
-                    if(id_a == id_b)
+                    if (id_a == id_b)
                     {
                         //print("Both are in the same set. No need of change.");
                     }
@@ -477,9 +656,9 @@ public class Sc_Planet : MonoBehaviour
         // map of new indexes that represent group numbers without aliases
         Dictionary<int, int> temp_groups_to_newGroups = new Dictionary<int, int>();
 
-        foreach(var groupSet in groupSetDict)
+        foreach (var groupSet in groupSetDict)
         {
-            foreach(var gr in groupSet.Value)
+            foreach (var gr in groupSet.Value)
             {
                 temp_groups_to_newGroups.Add(gr, nextGroup);
             }
@@ -524,7 +703,7 @@ public class Sc_Planet : MonoBehaviour
         string naveMeshName = "navMesh";
         Transform navMeshTransform = transform.Find(naveMeshName);
         GameObject navMeshGO;
-        if(navMeshTransform == null)
+        if (navMeshTransform == null)
         {
             navMeshGO = new GameObject(naveMeshName);
             navMeshGO.transform.parent = gameObject.transform;
@@ -546,7 +725,7 @@ public class Sc_Planet : MonoBehaviour
         foreach (var grpTris in group_to_triangle)
         {
             int[] tris = new int[3 * grpTris.Value.Count];
-            for(int i = 0; i < grpTris.Value.Count; ++i)
+            for (int i = 0; i < grpTris.Value.Count; ++i)
             {
                 int triIdx = grpTris.Value[i];
 
@@ -575,7 +754,7 @@ public class Sc_Planet : MonoBehaviour
             // load color material for navmesh displaying
             Material yourMaterial = new Material(Shader.Find("Standard"));
             float h = (float)(nameIdx + 1) / (float)group_to_triangle.Count;
-            yourMaterial.color = (nameIdx >= colorArray.Length)? Color.HSVToRGB(h, 1f, 1f) : colorArray[nameIdx];
+            yourMaterial.color = (nameIdx >= colorArray.Length) ? Color.HSVToRGB(h, 1f, 1f) : colorArray[nameIdx];
             mr.material = yourMaterial;
             MeshFilter mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = m;
@@ -585,6 +764,8 @@ public class Sc_Planet : MonoBehaviour
         }
 
         print("NavMeshes : " + navMesh.Count);
+
+        navMeshGO.SetActive(showNavMesh);
     }
 
     void OnValidate()

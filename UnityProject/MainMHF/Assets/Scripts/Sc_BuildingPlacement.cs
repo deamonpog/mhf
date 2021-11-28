@@ -30,7 +30,13 @@ public class Sc_BuildingPlacement : MonoBehaviour
         if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 8)))
         {
             transform.position = hit.point;
-            transform.rotation *= Quaternion.Euler( Vector3.Cross(transform.up, hit.normal) );
+            Vector3 hit_point = hit.point;
+            float hit_planet_radius = hit.transform.parent.gameObject.GetComponent<Sc_Planet>().planetRadius;
+            Vector3 hit_planet_position = hit.transform.position;
+            Vector3 hit_planet_normal = (hit_point - hit_planet_position).normalized;
+            float rotAngle = Mathf.Acos( Vector3.Dot(Vector3.up, hit_planet_normal) );
+            Vector3 rotAxis = Vector3.Cross(hit_point.normalized, Vector3.up).normalized;
+            transform.rotation = Quaternion.AngleAxis( -rotAngle * Mathf.Rad2Deg,  rotAxis);
 
             if(Physics.SphereCast(new Ray(ray.origin, ray.direction), CollisionRadius, out hit, 50000.0f, (1 << 7)))
             {
