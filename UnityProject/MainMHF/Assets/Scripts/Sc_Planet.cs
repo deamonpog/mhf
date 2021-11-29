@@ -58,7 +58,7 @@ public partial class Sc_Planet : MonoBehaviour
         // Calculate the navigational mesh for the planet
         BasicMeshData planet_NavMesh = GetBaseCube(navMeshResolution);
         planet_NavMesh = CalculateWithPlanetHeightMap(planet_NavMesh);
-        navMesh = new Sc_NavMesh(GenerateNavMesh(planet_NavMesh));
+        navMesh = GenerateNavMesh(planet_NavMesh);
 
         //UnityEditor.EditorUtility.ClearProgressBar();
     }
@@ -268,27 +268,7 @@ public partial class Sc_Planet : MonoBehaviour
         return graphgo;
     }
 
-    GameObject createPrimitiveGameObject(PrimitiveType in_PrimitiveType, string in_GOName, Vector3 in_Position, Vector3 in_Scale, Transform in_Parent) {
-        GameObject go = GameObject.CreatePrimitive(in_PrimitiveType);
-        go.name = in_GOName;
-        go.transform.position = in_Position;
-        go.transform.localScale = in_Scale;
-        go.transform.parent = in_Parent;
-        return go;
-    }
-
-    GameObject createLineGameObject(string in_GOName, Vector3 in_Start, Vector3 in_End, Transform in_Parent)
-    {
-        GameObject go = new GameObject(in_GOName);
-        go.transform.position = (in_Start + in_End) / 2.0f;
-        go.transform.parent = in_Parent;
-        LineRenderer lr = go.AddComponent<LineRenderer>();
-        lr.SetPosition(0, in_Start);
-        lr.SetPosition(1, in_End);
-        return go;
-    }
-
-    Dictionary<int, Dictionary<int, float>> GenerateNavMesh(BasicMeshData in_BasicMeshData)
+    Sc_NavMesh GenerateNavMesh(BasicMeshData in_BasicMeshData)
     {
         // List of Polygons with an index for each polygon as the key
         Dictionary<int, Sc_Polygon> temp_indexed_polygons_dict = new Dictionary<int, Sc_Polygon>();
@@ -411,7 +391,8 @@ public partial class Sc_Planet : MonoBehaviour
         print("Generating...");
 
         // Generate graph between polygons
-        Dictionary<int, Dictionary<int, float>> NavMeshGraph = new Dictionary<int, Dictionary<int, float>>();
+        Dictionary<int, Dictionary<int, float>> navMeshGraph = new Dictionary<int, Dictionary<int, float>>();
+        Dictionary<int, Sc_NavMeshConvexPolygon> navMeshNodes = new Dictionary<int, Sc_NavMeshConvexPolygon>();
 
         GameObject graphgo = refreshGameObject("Graph");
 
@@ -419,31 +400,31 @@ public partial class Sc_Planet : MonoBehaviour
         {
             Sc_Polygon pA = temp_indexed_polygons_dict[kvp.Value[0]];
             Sc_Polygon pB = temp_indexed_polygons_dict[kvp.Value[1]];
-            float distAB = Vector3.Dot(pA.center.normalized, pB.center.normalized);
+            float distAB = Mathf.Acos( Vector3.Dot(pA.center.normalized, pB.center.normalized) );
 
-            if (!NavMeshGraph.ContainsKey(pA.identifier))
+            if (!navMeshGraph.ContainsKey(pA.identifier))
             {
-                NavMeshGraph.Add(pA.identifier, new Dictionary<int, float>());
-                createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pA.identifier, pA.center.normalized * pA.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
+                navMeshGraph.Add(pA.identifier, new Dictionary<int, float>());
+                Sc_Utilities.createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pA.identifier, pA.center.normalized * pA.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
             }
-            if (!NavMeshGraph.ContainsKey(pB.identifier))
+            if (!navMeshGraph.ContainsKey(pB.identifier))
             {
-                NavMeshGraph.Add(pB.identifier, new Dictionary<int, float>());
-                createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pB.identifier, pB.center.normalized * pB.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
+                navMeshGraph.Add(pB.identifier, new Dictionary<int, float>());
+                Sc_Utilities.createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pB.identifier, pB.center.normalized * pB.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
             }
 
-            if (!NavMeshGraph[pA.identifier].ContainsKey(pB.identifier)) 
+            if (!navMeshGraph[pA.identifier].ContainsKey(pB.identifier)) 
             {
-                NavMeshGraph[pA.identifier].Add(pB.identifier, distAB);
-                createLineGameObject(
+                navMeshGraph[pA.identifier].Add(pB.identifier, distAB);
+                Sc_Utilities.createLineGameObject(
                     string.Format("Edge_{0}_{1}", pA.identifier, pB.identifier), 
                     pA.center.normalized * pA.center.magnitude * 1.1f, 
                     pB.center.normalized * pB.center.magnitude * 1.1f, graphgo.transform);
             }
 
-            if (!NavMeshGraph[pB.identifier].ContainsKey(pA.identifier)) 
+            if (!navMeshGraph[pB.identifier].ContainsKey(pA.identifier)) 
             { 
-                NavMeshGraph[pB.identifier].Add(pA.identifier, distAB); 
+                navMeshGraph[pB.identifier].Add(pA.identifier, distAB); 
             }
 
         }
@@ -493,7 +474,10 @@ public partial class Sc_Planet : MonoBehaviour
             MeshCollider mc = go.AddComponent<MeshCollider>();
             mc.sharedMesh = m;
             Sc_NavMeshConvexPolygon nmcp = go.AddComponent<Sc_NavMeshConvexPolygon>();
-            nmcp.identifier = kvp.Value.identifier;
+            nmcp.mIdentifier = kvp.Value.identifier;
+            nmcp.mNormalizedCenter = kvp.Value.center.normalized;
+            nmcp.mGeoCenter = Sc_SphericalCoord.FromCartesian(kvp.Value.center).ToGeographic();
+            navMeshNodes.Add(nmcp.mIdentifier, nmcp);
 
             // cleanup polygon
             kvp.Value.oldIdentifiers.Clear();
@@ -504,19 +488,14 @@ public partial class Sc_Planet : MonoBehaviour
 
         print(string.Format("New Polygons Count : {0}", poly_count));
 
-        return NavMeshGraph;
+        Sc_NavMesh navMeshObj = new Sc_NavMesh(navMeshGraph, navMeshNodes);
+
+        return navMeshObj;
     }
 
 
     void OnValidate()
     {
-        Transform navMeshTransform = transform.Find("navMesh");
-        if (navMeshTransform != null)
-        {
-            GameObject navMeshGO = navMeshTransform.gameObject;
-            //MeshRenderer mr = navMeshGO.GetComponentInChildren<MeshRenderer>();
-            //mr.enabled = showNavMesh;
-            //.SetActive(showNavMesh);
-        }
+
     }
 }

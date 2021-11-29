@@ -4,6 +4,57 @@ using UnityEngine;
 
 public static class Sc_Utilities
 {
+    public enum PhysicsLayerMask
+    {
+        Units,
+        Buildings,
+        Ground,
+        NavMesh
+    }
+
+    public static int GetPhysicsLayerMask(PhysicsLayerMask in_PLM)
+    {
+        switch (in_PLM)
+        {
+            case PhysicsLayerMask.Units:
+                return (1 << 6);
+            case PhysicsLayerMask.Buildings:
+                return (1 << 7);
+            case PhysicsLayerMask.Ground:
+                return (1 << 8);
+            case PhysicsLayerMask.NavMesh:
+                return (1 << 9);
+            default:
+                return 0;
+        }
+    }
+
+    public static GameObject createPrimitiveGameObject(PrimitiveType in_PrimitiveType, string in_GOName, Vector3 in_Position, Vector3 in_Scale, Transform in_Parent)
+    {
+        GameObject go = GameObject.CreatePrimitive(in_PrimitiveType);
+        go.name = in_GOName;
+        go.transform.position = in_Position;
+        go.transform.localScale = in_Scale;
+        go.transform.parent = in_Parent;
+        return go;
+    }
+
+    public static GameObject createLineGameObject(string in_GOName, Vector3 in_Start, Vector3 in_End, Transform in_Parent)
+    {
+        GameObject go = new GameObject(in_GOName);
+        go.transform.position = (in_Start + in_End) / 2.0f;
+        go.transform.parent = in_Parent;
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        lr.SetPosition(0, in_Start);
+        lr.SetPosition(1, in_End);
+        return go;
+    }
+
+    public static float AngularDistance(Vector3 normalized_A, Vector3 normalized_B)
+    {
+        return Mathf.Acos(Vector3.Dot(normalized_A, normalized_B));
+    }
+
     public static void Shuffle<T>(this IList<T> list)
     {
         int n = list.Count;

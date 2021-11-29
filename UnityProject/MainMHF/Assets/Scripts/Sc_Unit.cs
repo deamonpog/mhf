@@ -14,11 +14,14 @@ public class Sc_Unit : MonoBehaviour
     public float mMaxSpeed = 100.0f;
     public float mMaxAccel = 50.0f;
 
-    public bool mIsMoving = false;
     public float mUnitRadius = 5.0f;
 
-    public int mCurrentNavMeshPatchID = -1;
-    public int mDestinationNavMeshPatchID = -1;
+    public bool mIsMoving = false;
+
+    public Sc_NavMesh mNavMesh;
+    public List<int> mPathToDestinationNode;
+    public int mCurrentNavMeshNodeID = -1;
+    public int mDestinationNavMeshNodeID = -1;
     public Vector3 mV3_Destination = new Vector3();
     public Sc_GeographicCoord mGeo_Destination = new Sc_GeographicCoord();
 
@@ -31,17 +34,32 @@ public class Sc_Unit : MonoBehaviour
     public float gizmoLen = 2.0f;
     Sc_GeographicCoord thisGeo;
 
+    void adjustHeight(Vector3 in_NormalizedPosition)
+    {
+        RaycastHit hit;
+        Vector3 org = in_NormalizedPosition * mPlanetRadius * 2.0f;
+        Vector3 dir = (mPlanet.transform.position - org).normalized;
+        bool hitTrue = Physics.Raycast(org, dir, out hit, mPlanetRadius * 2.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Ground));
+        Debug.Assert(hitTrue, "Error: Unit did not identify the ground planet");
+        transform.position = hit.point;
+    }
+
     // Start is called before the first frame update
     void Start()
     {
         mPlanetRadius = mPlanet.GetComponent<Sc_Planet>().planetRadius;
+        mNavMesh = mPlanet.GetComponent<Sc_Planet>().navMesh;
 
         // setup position and orientation
         Vector3 planetSurfaceNormal = (transform.position - mPlanet.transform.position).normalized;
         Quaternion initialOrientation = Quaternion.FromToRotation(transform.up, planetSurfaceNormal);
 
-        transform.position = mPlanet.transform.position + mPlanetRadius * planetSurfaceNormal;
+        adjustHeight((mPlanet.transform.position + mPlanetRadius * planetSurfaceNormal).normalized);
+
         transform.rotation = initialOrientation;
+
+        // find current navmeshnode
+        findCurrentNavMesh();
     }
 
     Quaternion getCourse(Sc_GeographicCoord in_destGeo)
@@ -68,37 +86,77 @@ public class Sc_Unit : MonoBehaviour
         return curRotation;
     }
 
+    void findCurrentNavMesh()
+    {
+        RaycastHit hit;
+        Vector3 org = transform.position.normalized * mPlanetRadius * 2.0f;
+        Vector3 dir = (mPlanet.transform.position - org).normalized;
+        bool hitTrue = Physics.Raycast(org, dir, out hit, mPlanetRadius * 2.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.NavMesh));
+        Debug.Assert(hitTrue, "Error: Unit did not identify the ground navMeshNode");
+        mCurrentNavMeshNodeID = hit.collider.gameObject.GetComponent<Sc_NavMeshConvexPolygon>().mIdentifier;
+    }
+
+    void moveTowardsGeoCoord(Sc_GeographicCoord in_GeoLocation)
+    {
+        Quaternion curRotation = getCourse(in_GeoLocation);
+
+        mSpeed += mMaxAccel * Time.deltaTime;
+        if (mSpeed > mMaxSpeed)
+        {
+            mSpeed = mMaxSpeed;
+        }
+
+        Vector3 newPos = transform.position + (curRotation * Vector3.forward) * mSpeed * Time.deltaTime;
+        var scnewpos = Sc_SphericalCoord.FromCartesian(newPos);
+        scnewpos.radial = mPlanetRadius;
+        newPos = scnewpos.ToCartesian();
+
+        Quaternion newRotation = Quaternion.LookRotation(newPos - transform.position, transform.up);
+
+        //transform.position = newPos;
+        adjustHeight(newPos.normalized);
+        transform.rotation = newRotation;
+    }
+
     // Update is called once per frame
     void Update()
     {
         if (mIsMoving)
         {
-            thisGeo = Sc_SphericalCoord.FromCartesian(transform.position).ToGeographic();
-            if (Sc_GeographicCoord.AngularDistance(thisGeo, mGeo_Destination) < 0.01)
+            // calculate current navmesh node
+            findCurrentNavMesh();
+
+            // check if we are in the same destination navmesh node
+            if (mCurrentNavMeshNodeID == mDestinationNavMeshNodeID)
             {
-                mIsMoving = false;
-                mSpeed = 0f;
+                float arcDistance = mPlanetRadius * Sc_Utilities.AngularDistance(transform.position.normalized, mV3_Destination.normalized);
+                if (arcDistance < mUnitRadius)
+                {
+                    mIsMoving = false;
+                    mSpeed = 0f;
+                }
+                else
+                {
+                    moveTowardsGeoCoord(mGeo_Destination);
+                }
             }
             else
             {
-                Quaternion curRotation = getCourse(mGeo_Destination);
+                // in a different navmesh node than destination
 
-                mSpeed += mMaxAccel * Time.deltaTime;
-                if(mSpeed > mMaxSpeed)
+                // create path to destination node if it doesn't exist
+                if (mPathToDestinationNode == null)
                 {
-                    mSpeed = mMaxSpeed;
+                    mPathToDestinationNode = mNavMesh.FindPathAStar(mCurrentNavMeshNodeID, mDestinationNavMeshNodeID);
                 }
 
-                Vector3 newPos = transform.position + (curRotation * Vector3.forward) * mSpeed * Time.deltaTime;
-                var scnewpos = Sc_SphericalCoord.FromCartesian(newPos);
-                scnewpos.radial = mPlanetRadius;
-                newPos = scnewpos.ToCartesian();
+                // check if next navmesh node is reached
+                if (mPathToDestinationNode[0] == mCurrentNavMeshNodeID)
+                { 
+                    mPathToDestinationNode.RemoveAt(0);
+                }
 
-                Quaternion newRotation = Quaternion.LookRotation(newPos - transform.position, transform.up);
-
-                transform.position = newPos;
-                transform.rotation = newRotation;
-
+                moveTowardsGeoCoord(mNavMesh.navMeshNodes[mPathToDestinationNode[0]].mGeoCenter);
             }
         }
 

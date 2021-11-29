@@ -56,7 +56,7 @@ public class Sc_UnitSelection : MonoBehaviour
                 RemoveAllFromSelection();
             }
 
-            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 6)))
+            if (Physics.Raycast(ray, out hit, 50000.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Units)))
             {
                 GameObject go = hit.collider.gameObject;
                 AddToSelection(go);
@@ -65,28 +65,15 @@ public class Sc_UnitSelection : MonoBehaviour
 
         if (Input.GetButtonDown("ActionClick"))
         {
-            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 9)))
+            if (Physics.Raycast(ray, out hit, 50000.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.NavMesh)))
             {
-                print(string.Format("Hit999: {0}",hit.collider.gameObject));
                 Sc_NavMeshConvexPolygon nmcp = hit.collider.gameObject.GetComponent<Sc_NavMeshConvexPolygon>();
                 foreach (KeyValuePair<int, GameObject> pair in selectedTable)
                 {
                     if (pair.Value != null)
                     {
                         Sc_Unit unit = selectedTable[pair.Key].GetComponent<Sc_Unit>();
-                        unit.mDestinationNavMeshPatchID = nmcp.identifier;
-                    }
-                }
-            }
-
-            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 8)))
-            {
-                print(string.Format("Hit8: {0}", hit.collider.gameObject));
-                foreach (KeyValuePair<int, GameObject> pair in selectedTable)
-                {
-                    if (pair.Value != null)
-                    {
-                        Sc_Unit unit = selectedTable[pair.Key].GetComponent<Sc_Unit>();
+                        unit.mDestinationNavMeshNodeID = nmcp.mIdentifier;
                         unit.mIsMoving = true;
                         unit.mSpeed = 0f;
                         unit.mV3_Destination = hit.point;
@@ -95,7 +82,7 @@ public class Sc_UnitSelection : MonoBehaviour
                 }
             }
 
-            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 6)))
+            if (Physics.Raycast(ray, out hit, 50000.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Units)))
             {
                 foreach (KeyValuePair<int, GameObject> pair in selectedTable)
                 {
