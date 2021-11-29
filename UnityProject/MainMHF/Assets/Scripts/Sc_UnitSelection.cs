@@ -19,7 +19,7 @@ public class Sc_UnitSelection : MonoBehaviour
     public void RemoveFromSelection(int id)
     {
         GameObject go;
-        if( selectedTable.TryGetValue(id, out go))
+        if (selectedTable.TryGetValue(id, out go))
         {
             go.GetComponent<Sc_Selectable>().SetSelected(false);
             selectedTable.Remove(id);
@@ -28,9 +28,9 @@ public class Sc_UnitSelection : MonoBehaviour
 
     public void RemoveAllFromSelection()
     {
-        foreach(KeyValuePair<int,GameObject> pair in selectedTable)
+        foreach (KeyValuePair<int, GameObject> pair in selectedTable)
         {
-            if(pair.Value != null)
+            if (pair.Value != null)
             {
                 selectedTable[pair.Key].GetComponent<Sc_Selectable>().SetSelected(false);
             }
@@ -41,7 +41,6 @@ public class Sc_UnitSelection : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
     }
 
     // Update is called once per frame
@@ -66,9 +65,23 @@ public class Sc_UnitSelection : MonoBehaviour
 
         if (Input.GetButtonDown("ActionClick"))
         {
-            
+            if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 9)))
+            {
+                print(string.Format("Hit999: {0}",hit.collider.gameObject));
+                Sc_NavMeshConvexPolygon nmcp = hit.collider.gameObject.GetComponent<Sc_NavMeshConvexPolygon>();
+                foreach (KeyValuePair<int, GameObject> pair in selectedTable)
+                {
+                    if (pair.Value != null)
+                    {
+                        Sc_Unit unit = selectedTable[pair.Key].GetComponent<Sc_Unit>();
+                        unit.mDestinationNavMeshPatchID = nmcp.identifier;
+                    }
+                }
+            }
+
             if (Physics.Raycast(ray, out hit, 50000.0f, (1 << 8)))
             {
+                print(string.Format("Hit8: {0}", hit.collider.gameObject));
                 foreach (KeyValuePair<int, GameObject> pair in selectedTable)
                 {
                     if (pair.Value != null)

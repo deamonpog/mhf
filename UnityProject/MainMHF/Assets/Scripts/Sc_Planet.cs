@@ -6,10 +6,10 @@ using EasyButtons;
 public partial class Sc_Planet : MonoBehaviour
 {
     [Range(2, 512)]
-    public int resolution = 2;
+    public int resolution = 100;
 
     [Range(2, 256)]
-    public int planetRadius = 100;
+    public int planetRadius = 50;
 
     [Range(0, 1)]
     public double maxHeightRatioToRadius = 0.1;
@@ -23,7 +23,9 @@ public partial class Sc_Planet : MonoBehaviour
     [Range(2, 30)]
     public int navMeshResolution = 10;
 
-    public float navHeightDiff = 100.0f;
+    public float navHeightDiff = 1.0f;
+
+    public Sc_NavMesh navMesh;
 
     public bool showNavMesh = false;
 
@@ -56,7 +58,7 @@ public partial class Sc_Planet : MonoBehaviour
         // Calculate the navigational mesh for the planet
         BasicMeshData planet_NavMesh = GetBaseCube(navMeshResolution);
         planet_NavMesh = CalculateWithPlanetHeightMap(planet_NavMesh);
-        GenerateNavMesh(planet_NavMesh);
+        navMesh = new Sc_NavMesh(GenerateNavMesh(planet_NavMesh));
 
         //UnityEditor.EditorUtility.ClearProgressBar();
     }
@@ -484,25 +486,18 @@ public partial class Sc_Planet : MonoBehaviour
             m.SetUVs(0, in_BasicMeshData.uvs);
             m.triangles = kvp.Value.trianglesList;
 
-            // cleanup polygon
-            kvp.Value.oldIdentifiers.Clear();
-            kvp.Value.pointList.Clear();
-
-            //navMesh.Add(m);
-
             var go = new GameObject(string.Format("M_i{0}_p{1}", poly_count, kvp.Key));
             go.transform.parent = navMeshGO.transform;
             go.layer = 9; // set NavMesh layer
             go.tag = "NavMesh";
-            MeshRenderer mr = go.AddComponent<MeshRenderer>();
-            // load color material for navmesh displaying
-            Material yourMaterial = new Material(Shader.Find("Standard"));
-            float h = (float)(poly_count + 1) / (float)(cur_polygon - temp_old_polygons.Count);
-            yourMaterial.color = (poly_count >= colorArray.Length) ? Color.HSVToRGB(h, 1f, 1f) : colorArray[poly_count];
-            mr.material = yourMaterial;
-            MeshFilter mf = go.AddComponent<MeshFilter>();
-            mf.sharedMesh = m;
-            go.transform.localScale = Vector3.one * 1.08f;
+            MeshCollider mc = go.AddComponent<MeshCollider>();
+            mc.sharedMesh = m;
+            Sc_NavMeshConvexPolygon nmcp = go.AddComponent<Sc_NavMeshConvexPolygon>();
+            nmcp.identifier = kvp.Value.identifier;
+
+            // cleanup polygon
+            kvp.Value.oldIdentifiers.Clear();
+            kvp.Value.pointList.Clear();
 
             ++poly_count;
         }
@@ -519,7 +514,9 @@ public partial class Sc_Planet : MonoBehaviour
         if (navMeshTransform != null)
         {
             GameObject navMeshGO = navMeshTransform.gameObject;
-            navMeshGO.SetActive(showNavMesh);
+            //MeshRenderer mr = navMeshGO.GetComponentInChildren<MeshRenderer>();
+            //mr.enabled = showNavMesh;
+            //.SetActive(showNavMesh);
         }
     }
 }

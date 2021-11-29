@@ -17,6 +17,8 @@ public class Sc_Unit : MonoBehaviour
     public bool mIsMoving = false;
     public float mUnitRadius = 5.0f;
 
+    public int mCurrentNavMeshPatchID = -1;
+    public int mDestinationNavMeshPatchID = -1;
     public Vector3 mV3_Destination = new Vector3();
     public Sc_GeographicCoord mGeo_Destination = new Sc_GeographicCoord();
 
