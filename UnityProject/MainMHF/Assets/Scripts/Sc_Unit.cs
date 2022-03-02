@@ -21,6 +21,9 @@ public class Sc_Unit : MonoBehaviour
     public Sc_NavMesh mNavMesh;
     public List<int> mPathToDestinationNode;
     public int mCurrentNavMeshNodeID = -1;
+    public int mStartWaypointNavMeshNodeID = -1;
+    public int mTargetWaypointNavMeshNodeID = -1;
+    public int mNextTargetWaypointNavMeshNodeID = -1;
     public int mDestinationNavMeshNodeID = -1;
     public Vector3 mV3_Destination = new Vector3();
     public Sc_GeographicCoord mGeo_Destination = new Sc_GeographicCoord();
@@ -54,9 +57,10 @@ public class Sc_Unit : MonoBehaviour
         Vector3 planetSurfaceNormal = (transform.position - mPlanet.transform.position).normalized;
         Quaternion initialOrientation = Quaternion.FromToRotation(transform.up, planetSurfaceNormal);
 
-        adjustHeight((mPlanet.transform.position + mPlanetRadius * planetSurfaceNormal).normalized);
-
+        //adjustHeight((mPlanet.transform.position + mPlanetRadius * planetSurfaceNormal).normalized);
+        transform.position = mPlanet.transform.position + mPlanetRadius * planetSurfaceNormal;
         transform.rotation = initialOrientation;
+        adjustHeight((transform.position - mPlanet.transform.position).normalized);
 
         // find current navmeshnode
         findCurrentNavMesh();
@@ -111,26 +115,59 @@ public class Sc_Unit : MonoBehaviour
         scnewpos.radial = mPlanetRadius;
         newPos = scnewpos.ToCartesian();
 
+        RaycastHit hit;
+        Vector3 org = newPos.normalized * mPlanetRadius * 2.0f;
+        Vector3 dir = (mPlanet.transform.position - org).normalized;
+        bool hitTrue = Physics.Raycast(org, dir, out hit, mPlanetRadius * 2.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Ground));
+        Debug.Assert(hitTrue, "Error: Unit did not identify the ground planet surface");
+        //scnewpos.radial = Vector3.Distance(hit.point, mPlanet.transform.position);
+        //newPos = scnewpos.ToCartesian();
+
         Quaternion newRotation = Quaternion.LookRotation(newPos - transform.position, transform.up);
 
-        //transform.position = newPos;
-        adjustHeight(newPos.normalized);
+        transform.position = newPos;
+        //adjustHeight(newPos.normalized);
         transform.rotation = newRotation;
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (mNavMesh == null)
+        {
+            mNavMesh = mPlanet.GetComponent<Sc_Planet>().navMesh;
+        }
+
         if (mIsMoving)
         {
             // calculate current navmesh node
             findCurrentNavMesh();
 
-            // check if we are in the same destination navmesh node
-            if (mCurrentNavMeshNodeID == mDestinationNavMeshNodeID)
+            // plan the path if needed a new plan
+            if(mCurrentNavMeshNodeID != mStartWaypointNavMeshNodeID && mCurrentNavMeshNodeID != mTargetWaypointNavMeshNodeID)
+            {
+                print(string.Format("Find path cuz current node is not in either start or target -> {0} != {1} != {2}", mStartWaypointNavMeshNodeID, mCurrentNavMeshNodeID, mTargetWaypointNavMeshNodeID));
+                mPathToDestinationNode = mNavMesh.FindPathNaive(mCurrentNavMeshNodeID, mDestinationNavMeshNodeID);
+                mStartWaypointNavMeshNodeID = mCurrentNavMeshNodeID;
+                mTargetWaypointNavMeshNodeID = mPathToDestinationNode[0];
+                if (mPathToDestinationNode.Count >= 2)
+                {
+                    mNextTargetWaypointNavMeshNodeID = mPathToDestinationNode[1];
+                }
+                else
+                {
+                    mNextTargetWaypointNavMeshNodeID = -1;
+                }
+                mPathToDestinationNode.RemoveAt(0);
+            }
+
+            Debug.Assert(mCurrentNavMeshNodeID == mTargetWaypointNavMeshNodeID || mCurrentNavMeshNodeID == mStartWaypointNavMeshNodeID, "Error: current node is not waypoint node");
+
+            // check if we are in the destination node
+            if (mCurrentNavMeshNodeID == mDestinationNavMeshNodeID) // || mTargetWaypointNavMeshNodeID == -1)
             {
                 float arcDistance = mPlanetRadius * Sc_Utilities.AngularDistance(transform.position.normalized, mV3_Destination.normalized);
-                if (arcDistance < mUnitRadius)
+                if(arcDistance < mUnitRadius)
                 {
                     mIsMoving = false;
                     mSpeed = 0f;
@@ -142,22 +179,58 @@ public class Sc_Unit : MonoBehaviour
             }
             else
             {
-                // in a different navmesh node than destination
+                // check if we are at target node center or at a point where we can move to next target
+                float arcDistance = mPlanetRadius * Sc_Utilities.AngularDistance(transform.position.normalized, mNavMesh.navMeshNodes[mTargetWaypointNavMeshNodeID].mNormalizedCenter);
+                //print(string.Format("Dist to center {0} < {1}", arcDistance, mUnitRadius));
 
-                // create path to destination node if it doesn't exist
-                if (mPathToDestinationNode == null)
+                bool hitObstacle = true;
+                if (mNextTargetWaypointNavMeshNodeID != -1)
                 {
-                    mPathToDestinationNode = mNavMesh.FindPathAStar(mCurrentNavMeshNodeID, mDestinationNavMeshNodeID);
+                    RaycastHit hit;
+                    Vector3 org = transform.position;
+                    Vector3 dir = (mNavMesh.navMeshNodes[mNextTargetWaypointNavMeshNodeID].mCenter - org).normalized;
+                    hitObstacle = Physics.Raycast(org, dir, out hit, Vector3.Distance(org, mNavMesh.navMeshNodes[mNextTargetWaypointNavMeshNodeID].mCenter),
+                        Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Ground));
                 }
 
-                // check if next navmesh node is reached
-                if (mPathToDestinationNode[0] == mCurrentNavMeshNodeID)
-                { 
-                    mPathToDestinationNode.RemoveAt(0);
+                if (arcDistance < mUnitRadius || !hitObstacle)
+                {
+                    print("at target center");
+                    if (mTargetWaypointNavMeshNodeID == mDestinationNavMeshNodeID)
+                    {
+                        print("reached destination center");
+                        moveTowardsGeoCoord(mGeo_Destination);
+                        mTargetWaypointNavMeshNodeID = -1;
+                        mNextTargetWaypointNavMeshNodeID = -1;
+                        mStartWaypointNavMeshNodeID = mCurrentNavMeshNodeID;
+                    }
+                    else
+                    {
+                        print(string.Format("get next waypoint from {0} to {1}", mTargetWaypointNavMeshNodeID, mDestinationNavMeshNodeID));
+                        if (mPathToDestinationNode == null || mPathToDestinationNode.Count <= 0)
+                        {
+                            print("researching for a path cuz path has ended!!");
+                            mPathToDestinationNode = mNavMesh.FindPathNaive(mCurrentNavMeshNodeID, mDestinationNavMeshNodeID);
+                        }
+                        mStartWaypointNavMeshNodeID = mCurrentNavMeshNodeID;
+                        mTargetWaypointNavMeshNodeID = mPathToDestinationNode[0];
+                        if (mPathToDestinationNode.Count >= 2)
+                        {
+                            mNextTargetWaypointNavMeshNodeID = mPathToDestinationNode[1];
+                        }
+                        else
+                        {
+                            mNextTargetWaypointNavMeshNodeID = -1;
+                        }
+                        mPathToDestinationNode.RemoveAt(0);
+                    }
                 }
-
-                moveTowardsGeoCoord(mNavMesh.navMeshNodes[mPathToDestinationNode[0]].mGeoCenter);
+                else
+                {
+                    moveTowardsGeoCoord(mNavMesh.navMeshNodes[mTargetWaypointNavMeshNodeID].mGeoCenter);
+                }
             }
+
         }
 
         if (mIsAttacking)
@@ -193,5 +266,7 @@ public class Sc_Unit : MonoBehaviour
         Gizmos.DrawLine(transform.position, transform.position + transform.right * gizmoLen);
         Gizmos.color = Color.blue;
         Gizmos.DrawLine(transform.position, transform.position + transform.forward * gizmoLen);
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, mUnitRadius);
     }
 }

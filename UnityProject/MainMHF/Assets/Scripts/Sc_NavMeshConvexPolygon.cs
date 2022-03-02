@@ -1,10 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+using SerializationUtilities;
 
 public class Sc_NavMeshConvexPolygon : MonoBehaviour
 {
     public int mIdentifier;
+    public Vector3 mCenter;
     public Vector3 mNormalizedCenter;
     public Sc_GeographicCoord mGeoCenter;
 

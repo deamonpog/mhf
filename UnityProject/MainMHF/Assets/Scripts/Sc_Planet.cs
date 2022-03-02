@@ -2,14 +2,19 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using EasyButtons;
+using System;
+using System.IO.Compression;
+using SerializationUtilities;
 
 public partial class Sc_Planet : MonoBehaviour
 {
+    public string dataAssetName = "New Planet";
+
     [Range(2, 512)]
     public int resolution = 100;
 
-    [Range(2, 256)]
-    public int planetRadius = 50;
+    [Range(2, 1024)]
+    public int planetRadius = 500;
 
     [Range(0, 1)]
     public double maxHeightRatioToRadius = 0.1;
@@ -24,12 +29,13 @@ public partial class Sc_Planet : MonoBehaviour
     public int navMeshResolution = 10;
 
     public float navHeightDiff = 1.0f;
+    public float navMaxSlopeDegrees = 30.0f;
 
     public Sc_NavMesh navMesh;
 
     public bool showNavMesh = false;
 
-    struct BasicMeshData
+    public struct BasicMeshData
     {
         public Vector3[] vertices;
         public int[] triangles;
@@ -45,6 +51,136 @@ public partial class Sc_Planet : MonoBehaviour
         }
     }
 
+    [Serializable]
+    public struct SerializedBasicMeshData
+    {
+        public SerializedVector3[] vertices;
+        public int[] triangles;
+        public SerializedVector3[] normals;
+        public SerializedVector3[] uvs;
+
+        public SerializedBasicMeshData(BasicMeshData bmd)
+        {
+            vertices = new SerializedVector3[bmd.vertices.Length];
+            triangles = bmd.triangles;
+            normals = new SerializedVector3[bmd.vertices.Length];
+            uvs = new SerializedVector3[bmd.vertices.Length];
+
+            for (int i = 0; i < bmd.vertices.Length; ++i)
+            {
+                vertices[i] = (SerializedVector3)bmd.vertices[i];
+                normals[i] = (SerializedVector3)bmd.normals[i];
+                uvs[i] = (SerializedVector3)bmd.uvs[i];
+            }
+        }
+
+        public static explicit operator BasicMeshData(SerializedBasicMeshData v)
+        {
+            BasicMeshData bmd = new BasicMeshData();
+            bmd.vertices = new Vector3[v.vertices.Length];
+            bmd.triangles = v.triangles;
+            bmd.normals = new Vector3[v.vertices.Length];
+            bmd.uvs = new Vector3[v.vertices.Length];
+
+            for (int i = 0; i < v.vertices.Length; ++i)
+            {
+                bmd.vertices[i] = (Vector3)v.vertices[i];
+                bmd.normals[i] = (Vector3)v.normals[i];
+                bmd.uvs[i] = (Vector3)v.uvs[i];
+            }
+
+            return bmd;
+        }
+    }
+
+    struct NavMeshGenerationData
+    {
+        public Dictionary<int, Sc_Polygon> temp_indexed_polygons_dict;
+        public HashSet<int> temp_old_polygons;
+        public Dictionary<SortedTwoIntegers, int[]> temp_edge_to_polygon;
+        public Dictionary<int, Dictionary<int, float>> navMeshGraph;
+
+        public NavMeshGenerationData(
+            Dictionary<int, Sc_Polygon> temp_indexed_polygons_dict, 
+            HashSet<int> temp_old_polygons, Dictionary<SortedTwoIntegers, 
+                int[]> temp_edge_to_polygon,
+            Dictionary<int, Dictionary<int, float>> navMeshGraph)
+        {
+            this.temp_indexed_polygons_dict = temp_indexed_polygons_dict;
+            this.temp_old_polygons = temp_old_polygons;
+            this.temp_edge_to_polygon = temp_edge_to_polygon;
+            this.navMeshGraph = navMeshGraph;
+        }
+    }
+
+    void SaveSerializedBasicMeshData(string dataName, SerializedBasicMeshData data)
+    {
+        string fileName = $"./Assets/Generated/G_SerializedBasicMeshData_{dataName.Replace(" ", "_")}.bin";
+        //JsonSerialization.WriteToJsonFile(fileName, data);
+        BinarySerialization.WriteToBinaryFile(fileName, data);
+        print($"SerializedBasicMeshData file written : {fileName}");
+    }
+
+    BasicMeshData LoadSerializedBasicMeshData(string dataName)
+    {
+        string fileName = $"./Assets/Generated/G_SerializedBasicMeshData_{dataName.Replace(" ", "_")}.bin";
+        return (BasicMeshData)BinarySerialization.ReadFromBinaryFile<SerializedBasicMeshData>(fileName);
+    }
+
+    void SaveSerializedNavMeshData(string dataName, SerializedNavMesh data)
+    {
+        string fileName = $"./Assets/Generated/G_SerializedNavMesh_{dataName.Replace(" ", "_")}.bin";
+        //JsonSerialization.WriteToJsonFile(fileName, data);
+        BinarySerialization.WriteToBinaryFile(fileName, data);
+        print($"SerializedNavMesh file written : {fileName}");
+    }
+
+    SerializedNavMesh LoadSerializedNavMeshData(string dataName)
+    {
+        string fileName = $"./Assets/Generated/G_SerializedNavMesh_{dataName.Replace(" ", "_")}.bin";
+        return BinarySerialization.ReadFromBinaryFile<SerializedNavMesh>(fileName);
+    }
+
+    void SaveSerializedNavMeshPolygonsData(string dataName, SerializedNavMeshPolygons data)
+    {
+        string fileName = $"./Assets/Generated/G_SerializedNavMeshPolygons_{dataName.Replace(" ", "_")}.bin";
+        //JsonSerialization.WriteToJsonFile(fileName, data);
+        BinarySerialization.WriteToBinaryFile(fileName, data);
+        print($"SerializedNavMeshPolygons file written : {fileName}");
+    }
+
+    Dictionary<int, Sc_Polygon> LoadSerializedNavMeshPolygonsData(string dataName)
+    {
+        string fileName = $"./Assets/Generated/G_SerializedNavMeshPolygons_{dataName.Replace(" ", "_")}.bin";
+        var v = BinarySerialization.ReadFromBinaryFile<SerializedNavMeshPolygons>(fileName);
+        return v.GetConvertedDict();
+    }
+
+    [Button]
+    void LoadFromFile()
+    {
+        // Calculate the mesh triangles and vertices for a unit cube at origin
+        BasicMeshData planet_GeomMesh = LoadSerializedBasicMeshData(dataAssetName);
+        CreateMesh(planet_GeomMesh);
+
+        // Calculate the navigational mesh for the planet
+        BasicMeshData planet_NavMesh = LoadSerializedBasicMeshData($"{dataAssetName}_NavMeshGeom");
+
+        SerializedNavMesh navMeshData = LoadSerializedNavMeshData($"{dataAssetName}_NavMesh");
+
+        Dictionary<int, Sc_Polygon> navMeshPolyData = LoadSerializedNavMeshPolygonsData($"{dataAssetName}_NavMeshPolygons");
+
+        navMesh = LoadNavMesh(navMeshPolyData, planet_NavMesh, navMeshData);
+
+        string planet_gameObjectName = "mesh_Planet";
+        Transform planet_transform = transform.Find(planet_gameObjectName);
+        Sc_NavMeshManager nmm = planet_transform.gameObject.AddComponent<Sc_NavMeshManager>();
+        nmm.navMesh = navMesh;
+        nmm.nodeCount = navMesh.navMeshNodes.Count;
+
+        //UnityEditor.EditorUtility.ClearProgressBar();
+    }
+
     [Button]
     void RecalculateAndGenerate()
     {
@@ -53,12 +189,25 @@ public partial class Sc_Planet : MonoBehaviour
         // Calculate the mesh triangles and vertices for a unit cube at origin
         BasicMeshData planet_GeomMesh = GetBaseCube(resolution);
         planet_GeomMesh = CalculateWithPlanetHeightMap(planet_GeomMesh);
+        SaveSerializedBasicMeshData(dataAssetName, new SerializedBasicMeshData(planet_GeomMesh));
         CreateMesh(planet_GeomMesh);
 
         // Calculate the navigational mesh for the planet
         BasicMeshData planet_NavMesh = GetBaseCube(navMeshResolution);
         planet_NavMesh = CalculateWithPlanetHeightMap(planet_NavMesh);
-        navMesh = GenerateNavMesh(planet_NavMesh);
+        SaveSerializedBasicMeshData($"{dataAssetName}_NavMeshGeom", new SerializedBasicMeshData(planet_NavMesh));
+
+        var nmgd = GenerateNavMeshGenerationData(planet_NavMesh);
+        SaveSerializedNavMeshPolygonsData($"{dataAssetName}_NavMeshPolygons", new SerializedNavMeshPolygons(nmgd.temp_indexed_polygons_dict));
+
+        navMesh = GenerateNavMesh(nmgd, planet_NavMesh);
+        SaveSerializedNavMeshData($"{dataAssetName}_NavMesh", new SerializedNavMesh(navMesh));
+
+        string planet_gameObjectName = "mesh_Planet";
+        Transform planet_transform = transform.Find(planet_gameObjectName);
+        Sc_NavMeshManager nmm = planet_transform.gameObject.AddComponent<Sc_NavMeshManager>();
+        nmm.navMesh = navMesh;
+        nmm.nodeCount = navMesh.navMeshNodes.Count;
 
         //UnityEditor.EditorUtility.ClearProgressBar();
     }
@@ -268,7 +417,7 @@ public partial class Sc_Planet : MonoBehaviour
         return graphgo;
     }
 
-    Sc_NavMesh GenerateNavMesh(BasicMeshData in_BasicMeshData)
+    NavMeshGenerationData GenerateNavMeshGenerationData(BasicMeshData in_BasicMeshData)
     {
         // List of Polygons with an index for each polygon as the key
         Dictionary<int, Sc_Polygon> temp_indexed_polygons_dict = new Dictionary<int, Sc_Polygon>();
@@ -289,7 +438,7 @@ public partial class Sc_Planet : MonoBehaviour
             int v2 = in_BasicMeshData.triangles[i + 2];
 
             Sc_Polygon newPolyObj = new Sc_Polygon(cur_polygon, new int[] { v0, v1, v2 }, new int[] { v0, v1, v2 });
-            newPolyObj.calculateMeanStatistics(in_BasicMeshData.vertices);
+            newPolyObj.calculateMeanStatistics(in_BasicMeshData.vertices, planetRadius);
             temp_indexed_polygons_dict.Add(cur_polygon, newPolyObj);
 
             SortedTwoIntegers[] triangle_edges = new SortedTwoIntegers[] { new SortedTwoIntegers(v0, v1), new SortedTwoIntegers(v0, v2), new SortedTwoIntegers(v1, v2) };
@@ -323,7 +472,7 @@ public partial class Sc_Planet : MonoBehaviour
             //List<SortedTwoIntegers> shuffled_edge_list = new List<SortedTwoIntegers>(temp_edge_to_polygon.Keys);
             //Sc_Utilities.Shuffle(shuffled_edge_list);
             //foreach (SortedTwoIntegers edge in shuffled_edge_list)
-            foreach(var kvp in temp_edge_to_polygon)
+            foreach (var kvp in temp_edge_to_polygon)
             {
                 SortedTwoIntegers edge = kvp.Key;
 
@@ -335,9 +484,12 @@ public partial class Sc_Planet : MonoBehaviour
                 Debug.Assert(pB.identifier != -1, string.Format("Error: PolygonID B is {1} on Edge{0}", edge, pB.identifier));
                 Debug.Assert(pA.identifier != pB.identifier, string.Format("Error: Same Polygon {1}, {2} found on Edge{0}", edge, pA.identifier, pB.identifier));
 
-                if (Mathf.Abs(pA.meanHeightSqrd - pB.meanHeightSqrd) < navHeightDiff && Sc_Polygon.isPolygonMergeConvex(pA, pB, edge, in_BasicMeshData.vertices))
+                // merge under following condition
+                if ((!(pA.slopeAngleDegrees < navMaxSlopeDegrees ^ pB.slopeAngleDegrees < navMaxSlopeDegrees))
+                    && Mathf.Abs(pA.meanHeightSqrd - pB.meanHeightSqrd) < navHeightDiff
+                    && Sc_Polygon.isPolygonMergeConvex(pA, pB, edge, in_BasicMeshData.vertices))
                 {
-                    Sc_Polygon pCombined = Sc_Polygon.getMergedPolygon(cur_polygon, pA, pB, edge, in_BasicMeshData.vertices);
+                    Sc_Polygon pCombined = Sc_Polygon.getMergedPolygon(cur_polygon, pA, pB, edge, in_BasicMeshData.vertices, planetRadius);
 
                     // set old identifiers for the polygon which represent the old small polygons that created this polygon
                     pCombined.oldIdentifiers.UnionWith(pA.oldIdentifiers);
@@ -389,44 +541,173 @@ public partial class Sc_Planet : MonoBehaviour
         print(string.Format("Edges Remaining : {0}", temp_edge_to_polygon.Count));
 
         print("Generating...");
-
         // Generate graph between polygons
         Dictionary<int, Dictionary<int, float>> navMeshGraph = new Dictionary<int, Dictionary<int, float>>();
-        Dictionary<int, Sc_NavMeshConvexPolygon> navMeshNodes = new Dictionary<int, Sc_NavMeshConvexPolygon>();
 
         GameObject graphgo = refreshGameObject("Graph");
+        Material m = new Material(Shader.Find("Standard"));
 
         foreach (var kvp in temp_edge_to_polygon)
         {
             Sc_Polygon pA = temp_indexed_polygons_dict[kvp.Value[0]];
             Sc_Polygon pB = temp_indexed_polygons_dict[kvp.Value[1]];
-            float distAB = Mathf.Acos( Vector3.Dot(pA.center.normalized, pB.center.normalized) );
 
+            float distAB = Sc_Utilities.AngularDistance(pA.center.normalized, pB.center.normalized);
+            
+            m.color = Color.cyan;
             if (!navMeshGraph.ContainsKey(pA.identifier))
             {
                 navMeshGraph.Add(pA.identifier, new Dictionary<int, float>());
-                Sc_Utilities.createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pA.identifier, pA.center.normalized * pA.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
+                CreateVisualNavMeshNode(pA, m, graphgo.transform);
+                
             }
             if (!navMeshGraph.ContainsKey(pB.identifier))
             {
                 navMeshGraph.Add(pB.identifier, new Dictionary<int, float>());
-                Sc_Utilities.createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pB.identifier, pB.center.normalized * pB.center.magnitude * 1.1f, Vector3.one * 2.0f, graphgo.transform);
+                CreateVisualNavMeshNode(pB, m, graphgo.transform);
             }
 
-            if (!navMeshGraph[pA.identifier].ContainsKey(pB.identifier)) 
+            // make links under following condition
+            if (pA.slopeAngleDegrees < navMaxSlopeDegrees && pB.slopeAngleDegrees < navMaxSlopeDegrees)
             {
-                navMeshGraph[pA.identifier].Add(pB.identifier, distAB);
-                Sc_Utilities.createLineGameObject(
-                    string.Format("Edge_{0}_{1}", pA.identifier, pB.identifier), 
-                    pA.center.normalized * pA.center.magnitude * 1.1f, 
-                    pB.center.normalized * pB.center.magnitude * 1.1f, graphgo.transform);
+                if (!navMeshGraph[pA.identifier].ContainsKey(pB.identifier))
+                {
+                    navMeshGraph[pA.identifier].Add(pB.identifier, distAB);
+                    GameObject goA = GameObject.Find("Node:" + pA.identifier);
+                    GameObject goB = GameObject.Find("Node:" + pB.identifier);
+                    var go = Sc_Utilities.createLineGameObject(
+                        string.Format("Edge_{0}_{1}", pA.identifier, pB.identifier),
+                        goA.transform.position,
+                        goB.transform.position,
+                        graphgo.transform);
+                }
             }
 
-            if (!navMeshGraph[pB.identifier].ContainsKey(pA.identifier)) 
-            { 
-                navMeshGraph[pB.identifier].Add(pA.identifier, distAB); 
+            if (!navMeshGraph[pB.identifier].ContainsKey(pA.identifier))
+            {
+                navMeshGraph[pB.identifier].Add(pA.identifier, distAB);
             }
 
+        }
+
+        return new NavMeshGenerationData(temp_indexed_polygons_dict, temp_old_polygons, temp_edge_to_polygon, navMeshGraph);
+
+    }
+
+    void CreateVisualNavMeshNode(Sc_Polygon pA, Material m, Transform graphGameObject)
+    {
+        var go = Sc_Utilities.createPrimitiveGameObject(PrimitiveType.Sphere, "Node:" + pA.identifier, pA.center.normalized * pA.center.magnitude * 1f, Vector3.one * 8.0f, graphGameObject);
+        go.GetComponent<MeshRenderer>().material = m;
+        go.AddComponent<Sc_NavMeshGraphNode>();
+        RaycastHit hitg;
+        Vector3 org = go.transform.position.normalized * 1000f;
+        Vector3 dir = (Vector3.zero - org).normalized;
+        bool hitTrue = Physics.Raycast(org, dir, out hitg, 5000f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Ground));
+        Debug.Assert(hitTrue, "Error: Unit did not identify the ground planet");
+        go.transform.position = hitg.point;
+    }
+
+    Sc_NavMesh GenerateNavMesh(NavMeshGenerationData nmgd, BasicMeshData in_BasicMeshData) {
+
+        // Create navmesh child if it doesn't exist
+        string naveMeshName = "navMesh";
+        Transform navMeshTransform = transform.Find(naveMeshName);
+        GameObject navMeshGO;
+        if (navMeshTransform == null)
+        {
+            navMeshGO = new GameObject(naveMeshName);
+            navMeshGO.transform.parent = gameObject.transform;
+        }
+        else
+        {
+            navMeshGO = navMeshTransform.gameObject;
+        }
+
+        // Destroy all children in navmesh
+        while (navMeshGO.transform.childCount > 0)
+        {
+            DestroyImmediate(navMeshGO.transform.GetChild(0).gameObject);
+        }
+
+        Color[] colorArray = new Color[] { Color.green, Color.cyan, Color.blue, Color.yellow, Color.red, Color.magenta, Color.white };
+
+        Dictionary<int, Sc_NavMeshConvexPolygon> navMeshNodes = new Dictionary<int, Sc_NavMeshConvexPolygon>();
+
+        int poly_count = 0;
+        foreach (KeyValuePair<int, Sc_Polygon> kvp in nmgd.temp_indexed_polygons_dict)
+        {
+            if (nmgd.temp_old_polygons.Contains(kvp.Key))
+            {
+                continue;
+            }
+
+            Mesh m = new Mesh();
+            m.Clear();
+            m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            m.vertices = in_BasicMeshData.vertices;
+            m.normals = in_BasicMeshData.normals;
+            m.SetUVs(0, in_BasicMeshData.uvs);
+            m.triangles = kvp.Value.trianglesList;
+
+            var go = new GameObject(string.Format("M_i{0}_p{1}", poly_count, kvp.Key));
+            go.transform.parent = navMeshGO.transform;
+            go.layer = 9; // set NavMesh layer
+            go.tag = "NavMesh";
+            MeshCollider mc = go.AddComponent<MeshCollider>();
+            mc.sharedMesh = m;
+            MeshFilter mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = m;
+            MeshRenderer mr = go.AddComponent<MeshRenderer>();
+            Material mat = new Material(Shader.Find("Standard"));
+            mat.color = (kvp.Value.slopeAngleDegrees < navMaxSlopeDegrees) ? Color.green : Color.red;
+            mr.material = mat;
+            //print(string.Format("{0} \t{1} \t{2}", kvp.Value.slopeAngleDegrees, Mathf.Sqrt(kvp.Value.lowPointHeight), Mathf.Sqrt(kvp.Value.highPointHeight)));
+            Sc_NavMeshConvexPolygon nmcp = go.AddComponent<Sc_NavMeshConvexPolygon>();
+            nmcp.mIdentifier = kvp.Value.identifier;
+            nmcp.mCenter = kvp.Value.center;
+            nmcp.mNormalizedCenter = kvp.Value.center.normalized;
+            nmcp.mGeoCenter = Sc_SphericalCoord.FromCartesian(kvp.Value.center).ToGeographic();
+            navMeshNodes.Add(nmcp.mIdentifier, nmcp);
+
+            // cleanup polygon
+            kvp.Value.oldIdentifiers.Clear();
+            kvp.Value.pointList.Clear();
+
+            ++poly_count;
+        }
+
+        print(string.Format("New Polygons Count : {0}", poly_count));
+
+        Sc_NavMesh navMeshObj = new Sc_NavMesh(nmgd.navMeshGraph, navMeshNodes);
+
+        return navMeshObj;
+    }
+
+    Sc_NavMesh LoadNavMesh(Dictionary<int, Sc_Polygon> indexed_polygons, BasicMeshData in_BasicMeshData, SerializedNavMesh navMeshData)
+    {
+        GameObject graphGameObject = refreshGameObject("Graph");
+        Material graphNodeMat = new Material(Shader.Find("Standard"));
+
+        foreach (var kvp in navMeshData.navMeshGraph)
+        {
+            var nodeA = indexed_polygons[ kvp.Key ];
+
+            CreateVisualNavMeshNode(nodeA, graphNodeMat, graphGameObject.transform);
+
+            foreach(var node_Dist in kvp.Value)
+            {
+                var nodeB = indexed_polygons[node_Dist.Key];
+
+                CreateVisualNavMeshNode(nodeB, graphNodeMat, graphGameObject.transform);
+
+                GameObject goA = GameObject.Find("Node:" + nodeA.identifier);
+                GameObject goB = GameObject.Find("Node:" + nodeB.identifier);
+                var go = Sc_Utilities.createLineGameObject(
+                    string.Format("Edge_{0}_{1}", nodeA.identifier, nodeB.identifier),
+                    goA.transform.position,
+                    goB.transform.position,
+                    graphGameObject.transform);
+            }
         }
 
         // Create navmesh child if it doesn't exist
@@ -451,14 +732,15 @@ public partial class Sc_Planet : MonoBehaviour
 
         Color[] colorArray = new Color[] { Color.green, Color.cyan, Color.blue, Color.yellow, Color.red, Color.magenta, Color.white };
 
+        Dictionary<int, Sc_NavMeshConvexPolygon> navMeshNodes = new Dictionary<int, Sc_NavMeshConvexPolygon>();
+
         int poly_count = 0;
-        foreach (KeyValuePair<int, Sc_Polygon> kvp in temp_indexed_polygons_dict)
+        foreach (KeyValuePair<int, Sc_Polygon> kvp in indexed_polygons)
         {
-            if (temp_old_polygons.Contains(kvp.Key))
+            if (navMeshNodes.ContainsKey(kvp.Value.identifier))
             {
                 continue;
             }
-
             Mesh m = new Mesh();
             m.Clear();
             m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -473,10 +755,21 @@ public partial class Sc_Planet : MonoBehaviour
             go.tag = "NavMesh";
             MeshCollider mc = go.AddComponent<MeshCollider>();
             mc.sharedMesh = m;
+            MeshFilter mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = m;
+            MeshRenderer mr = go.AddComponent<MeshRenderer>();
+            Material mat = new Material(Shader.Find("Standard"));
+            mat.color = (kvp.Value.slopeAngleDegrees < navMaxSlopeDegrees) ? Color.green : Color.red;
+            mr.material = mat;
+
+            //print(string.Format("{0} \t{1} \t{2}", kvp.Value.slopeAngleDegrees, Mathf.Sqrt(kvp.Value.lowPointHeight), Mathf.Sqrt(kvp.Value.highPointHeight)));
+
             Sc_NavMeshConvexPolygon nmcp = go.AddComponent<Sc_NavMeshConvexPolygon>();
             nmcp.mIdentifier = kvp.Value.identifier;
+            nmcp.mCenter = kvp.Value.center;
             nmcp.mNormalizedCenter = kvp.Value.center.normalized;
             nmcp.mGeoCenter = Sc_SphericalCoord.FromCartesian(kvp.Value.center).ToGeographic();
+            //print(nmcp.mIdentifier);
             navMeshNodes.Add(nmcp.mIdentifier, nmcp);
 
             // cleanup polygon
@@ -488,11 +781,17 @@ public partial class Sc_Planet : MonoBehaviour
 
         print(string.Format("New Polygons Count : {0}", poly_count));
 
-        Sc_NavMesh navMeshObj = new Sc_NavMesh(navMeshGraph, navMeshNodes);
+        Sc_NavMesh navMeshObj = new Sc_NavMesh(navMeshData.navMeshGraph, navMeshNodes);
 
         return navMeshObj;
     }
 
+    // Start is called before the first frame update
+    void Start()
+    {
+        LoadFromFile();
+        print(navMesh);
+    }
 
     void OnValidate()
     {

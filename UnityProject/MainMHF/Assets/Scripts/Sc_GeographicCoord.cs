@@ -23,6 +23,22 @@ public class Sc_GeographicCoord
         lon = _lon;
     }
 
+    public void AddLat(float in_lat)
+    {
+        lat = ( (lat + (Mathf.PI / 2) + in_lat) % Mathf.PI ) - (Mathf.PI / 2);
+    }
+
+    public void AddLon(float in_lon)
+    {
+        lon = (lon + in_lon) % (2 * Mathf.PI);
+    }
+
+    public void Add(float in_lat, float in_lon)
+    {
+        AddLat(in_lat);
+        AddLon(in_lon);
+    }
+
     public override string ToString()
     {
         return "Geo(" + lat + ", " + lon + ")";

@@ -10,6 +10,9 @@ public class Sc_Polygon
     public HashSet<int> oldIdentifiers;
     public float meanHeightSqrd;
     public Vector3 center;
+    public float slopeAngleDegrees;
+    public float lowPointHeight;
+    public float highPointHeight;
 
     public Sc_Polygon(int in_identifier, List<int> in_vertIndexList, int[] in_trianglesList)
     {
@@ -57,17 +60,43 @@ public class Sc_Polygon
         return pointList.IndexOf(currentPoint);
     }
 
-    public void calculateMeanStatistics(Vector3[] indexedVertices)
+    // Calculates the center, mean height, lowest height, max height, lowest height index, highest height index, and slope of the polygon.
+    public void calculateMeanStatistics(Vector3[] in_IndexedVertices, float in_PlanetRadius)
     {
-        center = indexedVertices[trianglesList[0]];
-        meanHeightSqrd = indexedVertices[trianglesList[0]].sqrMagnitude;
+        center = in_IndexedVertices[trianglesList[0]];
+        meanHeightSqrd = in_IndexedVertices[trianglesList[0]].sqrMagnitude;
+        int lowPointIdx = 0;
+        lowPointHeight = meanHeightSqrd;
+        int highPointIdx = 0;
+        highPointHeight = meanHeightSqrd;
         for (int i = 1; i < trianglesList.Length; ++i)
         {
-            center += indexedVertices[trianglesList[i]];
-            meanHeightSqrd += indexedVertices[trianglesList[i]].sqrMagnitude;
+            float thisHeight = in_IndexedVertices[trianglesList[i]].sqrMagnitude;
+
+            center += in_IndexedVertices[trianglesList[i]];
+            meanHeightSqrd += thisHeight;
+            
+            if (thisHeight < lowPointHeight)
+            {
+                lowPointIdx = i;
+                lowPointHeight = thisHeight;
+            }
+
+            if(highPointHeight < thisHeight)
+            {
+                highPointIdx = i;
+                highPointHeight = thisHeight;
+            }
         }
         center /= trianglesList.Length;
         meanHeightSqrd /= trianglesList.Length;
+        slopeAngleDegrees = 0;
+        if (highPointHeight != lowPointHeight)
+        {
+            slopeAngleDegrees = Mathf.Rad2Deg * Mathf.Atan2(Mathf.Sqrt(highPointHeight) - Mathf.Sqrt(lowPointHeight),
+                Mathf.Sqrt(lowPointHeight) * Sc_Utilities.AngularDistance(in_IndexedVertices[trianglesList[lowPointIdx]].normalized, in_IndexedVertices[trianglesList[highPointIdx]].normalized));
+        }
+        //Debug.Log($"{identifier} : d = {slopeAngleDegrees}, high = {highPointHeight}, low = {lowPointHeight}");
     }
 
     /// <summary>
@@ -101,7 +130,7 @@ public class Sc_Polygon
         return ((angle_A_pA + angle_A_pB) <= Mathf.PI) && ((angle_B_pA + angle_B_pB) <= Mathf.PI);
     }
 
-    public static Sc_Polygon getMergedPolygon(int identifier, Sc_Polygon pA, Sc_Polygon pB, SortedTwoIntegers edge, Vector3[] indexedVertices)
+    public static Sc_Polygon getMergedPolygon(int identifier, Sc_Polygon pA, Sc_Polygon pB, SortedTwoIntegers edge, Vector3[] indexedVertices, float in_PlanetRadius)
     {
         // Let PQR be the angle notation at edge
         // Therefore edge.A, edge.B are Q, R respectively
@@ -166,7 +195,7 @@ public class Sc_Polygon
         poly1.trianglesList.CopyTo(tris, poly0.trianglesList.Length);
 
         Sc_Polygon retval = new Sc_Polygon(identifier, newPolygonList, tris);
-        retval.calculateMeanStatistics(indexedVertices);
+        retval.calculateMeanStatistics(indexedVertices, in_PlanetRadius);
 
         return retval;
     }

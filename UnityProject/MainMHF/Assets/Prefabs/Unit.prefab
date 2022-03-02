@@ -29,6 +29,7 @@ Transform:
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0.75, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8021851529169152269}
   m_RootOrder: 1
@@ -52,6 +53,7 @@ MeshRenderer:
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
   m_MotionVectors: 1
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
@@ -124,6 +126,7 @@ Transform:
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0.25, z: 0}
   m_LocalScale: {x: 1, y: 0.5, z: 3}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8021851529169152269}
   m_RootOrder: 0
@@ -147,6 +150,7 @@ MeshRenderer:
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
   m_MotionVectors: 1
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
@@ -201,9 +205,10 @@ GameObject:
   - component: {fileID: 8021851529169152269}
   - component: {fileID: 800090141320456209}
   - component: {fileID: 1530330690949535272}
-  m_Layer: 0
+  - component: {fileID: 4847748436840562085}
+  m_Layer: 6
   m_Name: Unit
-  m_TagString: Untagged
+  m_TagString: Unit
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -218,6 +223,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1817573434308212075}
   - {fileID: 552286521266867408}
@@ -236,7 +242,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ecabe0400a5987a45b30b94f97d316e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CollisionBoundingVolume: {fileID: 1530330690949535272}
+  mPlanet: {fileID: 0}
+  mPlanetRadius: 0
+  mSpeed: 0
+  mMaxSpeed: 100
+  mMaxAccel: 50
+  mUnitRadius: 5
+  mIsMoving: 0
+  mPathToDestinationNode: 
+  mCurrentNavMeshNodeID: -1
+  mStartWaypointNavMeshNodeID: -1
+  mTargetWaypointNavMeshNodeID: -1
+  mNextTargetWaypointNavMeshNodeID: -1
+  mDestinationNavMeshNodeID: -1
+  mV3_Destination: {x: 0, y: 0, z: 0}
+  mGeo_Destination:
+    lat: 0
+    lon: 0
+  mIsAttacking: 0
+  mTarget: {x: 0, y: 0, z: 0}
+  projectile: {fileID: 0}
+  gizmoLen: 2
 --- !u!65 &1530330690949535272
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -250,3 +276,16 @@ BoxCollider:
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 3}
   m_Center: {x: 0, y: 0.5, z: 0}
+--- !u!114 &4847748436840562085
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8059666967147099610}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de54c50d62b843d408ca4e41ede113ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isSelected: 0

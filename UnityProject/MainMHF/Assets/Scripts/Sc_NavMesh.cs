@@ -1,3 +1,4 @@
+using SerializationUtilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -16,7 +17,7 @@ public class Sc_NavMesh
 
     public float getHeuristicDistance(int in_A, int in_B)
     {
-        return Mathf.Acos(Vector3.Dot( navMeshNodes[in_A].mNormalizedCenter, navMeshNodes[in_B].mNormalizedCenter));
+        return Mathf.Acos(Vector3.Dot(navMeshNodes[in_A].mNormalizedCenter, navMeshNodes[in_B].mNormalizedCenter));
     }
 
     public class IndexedOrderedValue : IComparable<IndexedOrderedValue>, IEquatable<IndexedOrderedValue>
@@ -47,9 +48,92 @@ public class Sc_NavMesh
     /// <param name="in_StartNode">Starting polygon node index</param>
     /// <param name="in_DestNode">Destination polygon node index</param>
     /// <returns>List of nodees in the order that they need to be visited to get to destination, excluding start node</returns>
+    public List<int> FindPathNaive(int in_StartNode, int in_DestNode)
+    {
+        Dictionary<int, bool> node_visited = new Dictionary<int, bool>();
+        Dictionary<int, float> node_distance = new Dictionary<int, float>();
+        Dictionary<int, int> node_parent = new Dictionary<int, int>();
+        foreach (int node in navMeshGraph.Keys)
+        {
+            node_visited[node] = false;
+            node_distance[node] = Mathf.Infinity;
+            node_parent[node] = node;
+        }
+        node_distance[in_StartNode] = 0;
+
+        int currentNode = in_StartNode;
+
+        while (currentNode != -1)
+        {
+            // process unvisited neighbors of current
+            foreach (KeyValuePair<int, float> nbr_dist in navMeshGraph[currentNode])
+            {
+                if (!node_visited[nbr_dist.Key])
+                {
+                    float distViaCurrent = nbr_dist.Value + node_distance[currentNode];
+                    if (distViaCurrent < node_distance[nbr_dist.Key])
+                    {
+                        node_distance[nbr_dist.Key] = distViaCurrent;
+                        node_parent[nbr_dist.Key] = currentNode;
+                    }
+                }
+            }
+
+            // mark as visited
+            node_visited[currentNode] = true;
+
+            // check goal found?
+            if (node_visited[in_DestNode])
+            {
+                // done
+                List<int> totalPath = new List<int>();
+                totalPath.Insert(0, in_DestNode);
+                int cur = in_DestNode;
+                while (node_parent.ContainsKey(cur))
+                {
+                    cur = node_parent[cur];
+                    totalPath.Insert(0, cur);
+                    if (cur == in_StartNode)
+                    {
+                        break;
+                    }
+                }
+                return totalPath;
+            }
+
+            // get smallest distance valued node 
+            int minnode = -1;
+            float minval = Mathf.Infinity;
+            foreach (var node_dist in node_distance)
+            {
+                if (!node_visited[node_dist.Key] && node_dist.Value < minval)
+                {
+                    minval = node_dist.Value;
+                    minnode = node_dist.Key;
+                }
+            }
+
+            currentNode = minnode;
+        }
+
+        if (currentNode == -1)
+        {
+            Debug.Log("There is no connecting path!!!");
+            return null;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the path needed to travese from start node to dest node
+    /// </summary>
+    /// <param name="in_StartNode">Starting polygon node index</param>
+    /// <param name="in_DestNode">Destination polygon node index</param>
+    /// <returns>List of nodees in the order that they need to be visited to get to destination, excluding start node</returns>
     public List<int> FindPathAStar(int in_StartNode, int in_DestNode)
     {
-        if(in_StartNode == in_DestNode)
+        if (in_StartNode == in_DestNode)
         {
             return new List<int>();
         }
@@ -80,7 +164,7 @@ public class Sc_NavMesh
             var enumerator = openSet_fscore_to_nodes.GetEnumerator();
             enumerator.MoveNext();
             var current = enumerator.Current.Value[0];
-            if(current  == in_DestNode)
+            if (current == in_DestNode)
             {
                 // done
                 List<int> totalPath = new List<int>();
@@ -93,23 +177,26 @@ public class Sc_NavMesh
                 return totalPath;
             }
 
-            foreach(KeyValuePair<int,float> nbr_fscore in navMeshGraph[current])
+            foreach (KeyValuePair<int, float> nbr_fscore in navMeshGraph[current])
             {
                 int nbr = nbr_fscore.Key;
                 float tentative_gscore = gScore[current] + navMeshGraph[current][nbr];
-                if(tentative_gscore < gScore[nbr])
+                if (tentative_gscore < gScore[nbr])
                 {
                     cameFrom[nbr] = current;
                     gScore[nbr] = tentative_gscore;
                     fScore[nbr] = tentative_gscore + getHeuristicDistance(nbr, in_DestNode);
-                    
-                    float currentNbrFScore = openSet_node_to_fscore[nbr];
-                    if (openSet_fscore_to_nodes.ContainsKey(currentNbrFScore))
+
+                    if (openSet_node_to_fscore.ContainsKey(nbr))
                     {
-                        openSet_fscore_to_nodes[currentNbrFScore].Remove(current);
-                        if(openSet_fscore_to_nodes[currentNbrFScore].Count <= 0)
+                        float currentNbrFScore = openSet_node_to_fscore[nbr];
+                        if (openSet_fscore_to_nodes.ContainsKey(currentNbrFScore))
                         {
-                            openSet_fscore_to_nodes.Remove(currentNbrFScore);
+                            openSet_fscore_to_nodes[currentNbrFScore].Remove(current);
+                            if (openSet_fscore_to_nodes[currentNbrFScore].Count <= 0)
+                            {
+                                openSet_fscore_to_nodes.Remove(currentNbrFScore);
+                            }
                         }
                     }
 
