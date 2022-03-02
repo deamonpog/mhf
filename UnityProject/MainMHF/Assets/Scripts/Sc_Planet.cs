@@ -174,7 +174,11 @@ public partial class Sc_Planet : MonoBehaviour
 
         string planet_gameObjectName = "mesh_Planet";
         Transform planet_transform = transform.Find(planet_gameObjectName);
-        Sc_NavMeshManager nmm = planet_transform.gameObject.AddComponent<Sc_NavMeshManager>();
+        Sc_NavMeshManager nmm = planet_transform.gameObject.GetComponent<Sc_NavMeshManager>();
+        if (nmm == null)
+        {
+            nmm = planet_transform.gameObject.AddComponent<Sc_NavMeshManager>();
+        }
         nmm.navMesh = navMesh;
         nmm.nodeCount = navMesh.navMeshNodes.Count;
 
@@ -205,7 +209,11 @@ public partial class Sc_Planet : MonoBehaviour
 
         string planet_gameObjectName = "mesh_Planet";
         Transform planet_transform = transform.Find(planet_gameObjectName);
-        Sc_NavMeshManager nmm = planet_transform.gameObject.AddComponent<Sc_NavMeshManager>();
+        Sc_NavMeshManager nmm = planet_transform.gameObject.GetComponent<Sc_NavMeshManager>();
+        if (nmm == null)
+        {
+            nmm = planet_transform.gameObject.AddComponent<Sc_NavMeshManager>();
+        }
         nmm.navMesh = navMesh;
         nmm.nodeCount = navMesh.navMeshNodes.Count;
 
