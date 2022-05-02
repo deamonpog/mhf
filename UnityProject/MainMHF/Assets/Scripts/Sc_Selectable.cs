@@ -2,25 +2,28 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Sc_Selectable : MonoBehaviour
+namespace GalacticWar
 {
-    Color mOriginalColor;
-    public bool isSelected;
-
-    public void SetSelected(bool isSelected)
+    public class Sc_Selectable : MonoBehaviour
     {
-        gameObject.GetComponentInChildren<Renderer>().material.color = (isSelected) ? Color.red : mOriginalColor;
-    }
+        Color mOriginalColor;
+        public bool isSelected;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        mOriginalColor = GetComponentInChildren<Renderer>().material.color;
-        SetSelected(isSelected);
-    }
+        public void SetSelected(bool isSelected)
+        {
+            gameObject.GetComponentInChildren<Renderer>().material.color = (isSelected) ? Color.red : mOriginalColor;
+        }
 
-    private void OnDestroy()
-    {
-        SetSelected(false);
+        // Start is called before the first frame update
+        void Start()
+        {
+            mOriginalColor = GetComponentInChildren<Renderer>().material.color;
+            SetSelected(isSelected);
+        }
+
+        private void OnDestroy()
+        {
+            SetSelected(false);
+        }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-
+[System.Serializable]
 public struct SortedTwoIntegers
 {
     public int A;
@@ -22,8 +22,14 @@ public struct SortedTwoIntegers
 
     public override string ToString()
     {
-        return string.Format("<{0},{1}>", A, B);
+        return $"<{A},{B}>";
     }
+
+    /*public static implicit operator SortedTwoIntegers(string v)
+    {
+        string [] a = v.Substring(1,v.Length-2).Split(',');
+        return new SortedTwoIntegers(int.Parse(a[0]), int.Parse(a[1]));
+    }*/
 }
 
 public class TwoIntegersComparer : IEqualityComparer<SortedTwoIntegers>
