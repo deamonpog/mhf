@@ -2,65 +2,68 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class Sc_GeographicCoord
+namespace GalacticWar
 {
-    [Tooltip("Latitude range between -PI/2 to +PI/2. Latitude = (PI / 2) - Polar.")]
-    public float lat;
-
-    [Tooltip("Longitude / Azimuthal range between 0 to 2PI")]
-    public float lon;
-
-    public Sc_GeographicCoord()
+    [System.Serializable]
+    public class Sc_GeographicCoord
     {
-        lat = 0.0f;
-        lon = 0.0f;
-    }
+        [Tooltip("Latitude range between -PI/2 to +PI/2. Latitude = (PI / 2) - Polar.")]
+        public float lat;
 
-    public Sc_GeographicCoord(float _lat, float _lon)
-    {
-        lat = _lat;
-        lon = _lon;
-    }
+        [Tooltip("Longitude / Azimuthal range between 0 to 2PI")]
+        public float lon;
 
-    public void AddLat(float in_lat)
-    {
-        lat = ( (lat + (Mathf.PI / 2) + in_lat) % Mathf.PI ) - (Mathf.PI / 2);
-    }
+        public Sc_GeographicCoord()
+        {
+            lat = 0.0f;
+            lon = 0.0f;
+        }
 
-    public void AddLon(float in_lon)
-    {
-        lon = (lon + in_lon) % (2 * Mathf.PI);
-    }
+        public Sc_GeographicCoord(float _lat, float _lon)
+        {
+            lat = _lat;
+            lon = _lon;
+        }
 
-    public void Add(float in_lat, float in_lon)
-    {
-        AddLat(in_lat);
-        AddLon(in_lon);
-    }
+        public void AddLat(float in_lat)
+        {
+            lat = ((lat + (Mathf.PI / 2) + in_lat) % Mathf.PI) - (Mathf.PI / 2);
+        }
 
-    public override string ToString()
-    {
-        return "Geo(" + lat + ", " + lon + ")";
-    }
+        public void AddLon(float in_lon)
+        {
+            lon = (lon + in_lon) % (2 * Mathf.PI);
+        }
 
-    public Sc_SphericalCoord ToSpherical(float radius)
-    {
-        return Sc_Utilities.getSphericalCoordinates(radius, this);
-    }
+        public void Add(float in_lat, float in_lon)
+        {
+            AddLat(in_lat);
+            AddLon(in_lon);
+        }
 
-    public static Sc_GeographicCoord FromSpherical(Sc_SphericalCoord spherical)
-    {
-        return Sc_Utilities.getGeographicCoordinates(spherical);
-    }
+        public override string ToString()
+        {
+            return "Geo(" + lat + ", " + lon + ")";
+        }
 
-    public static float AngularDistance(Sc_GeographicCoord a, Sc_GeographicCoord b)
-    {
-        //float delta_lat = b.lat - a.lat;
-        float delta_lon = b.lon - a.lon;
-        float mean_lat = (a.lat + b.lat) / 2.0f;
+        public Sc_SphericalCoord ToSpherical(float radius)
+        {
+            return Sc_Utilities.getSphericalCoordinates(radius, this);
+        }
 
-        float dist = Mathf.Acos(Mathf.Sin(a.lat) * Mathf.Sin(b.lat) + Mathf.Cos(a.lat) * Mathf.Cos(b.lat) * Mathf.Cos(delta_lon)); 
-        return dist;
+        public static Sc_GeographicCoord FromSpherical(Sc_SphericalCoord spherical)
+        {
+            return Sc_Utilities.getGeographicCoordinates(spherical);
+        }
+
+        public static float AngularDistance(Sc_GeographicCoord a, Sc_GeographicCoord b)
+        {
+            //float delta_lat = b.lat - a.lat;
+            float delta_lon = b.lon - a.lon;
+            float mean_lat = (a.lat + b.lat) / 2.0f;
+
+            float dist = Mathf.Acos(Mathf.Sin(a.lat) * Mathf.Sin(b.lat) + Mathf.Cos(a.lat) * Mathf.Cos(b.lat) * Mathf.Cos(delta_lon));
+            return dist;
+        }
     }
 }

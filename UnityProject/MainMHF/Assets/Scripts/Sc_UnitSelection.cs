@@ -6,14 +6,18 @@ namespace GalacticWar
 {
     public class Sc_UnitSelection : MonoBehaviour
     {
-        public Dictionary<int, GameObject> selectedTable = new Dictionary<int, GameObject>();
+        public Dictionary<int, GameObject> mSelectedTable = new Dictionary<int, GameObject>();
+
+        public float mSelectClickDuration;
+        public bool mFirstSelectClick = false;
+        public float mDeselectDuration = 0.1f;
 
         public void AddToSelection(GameObject go)
         {
             int id = go.GetInstanceID();
-            if (!selectedTable.ContainsKey(id))
+            if (!mSelectedTable.ContainsKey(id))
             {
-                selectedTable.Add(id, go);
+                mSelectedTable.Add(id, go);
                 go.GetComponent<Sc_Selectable>().SetSelected(true);
             }
         }
@@ -21,23 +25,23 @@ namespace GalacticWar
         public void RemoveFromSelection(int id)
         {
             GameObject go;
-            if (selectedTable.TryGetValue(id, out go))
+            if (mSelectedTable.TryGetValue(id, out go))
             {
                 go.GetComponent<Sc_Selectable>().SetSelected(false);
-                selectedTable.Remove(id);
+                mSelectedTable.Remove(id);
             }
         }
 
         public void RemoveAllFromSelection()
         {
-            foreach (KeyValuePair<int, GameObject> pair in selectedTable)
+            foreach (KeyValuePair<int, GameObject> pair in mSelectedTable)
             {
                 if (pair.Value != null)
                 {
-                    selectedTable[pair.Key].GetComponent<Sc_Selectable>().SetSelected(false);
+                    mSelectedTable[pair.Key].GetComponent<Sc_Selectable>().SetSelected(false);
                 }
             }
-            selectedTable.Clear();
+            mSelectedTable.Clear();
         }
 
         // Start is called before the first frame update
@@ -53,16 +57,24 @@ namespace GalacticWar
 
             if (Input.GetButtonDown("SelectClick"))
             {
-                if (!Input.GetButton("MoreSelect"))
-                {
-                    RemoveAllFromSelection();
-                }
+                mSelectClickDuration = Time.time;
 
                 if (Physics.Raycast(ray, out hit, 50000.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Units)))
                 {
                     GameObject go = hit.collider.gameObject;
                     AddToSelection(go);
+                    mFirstSelectClick = mSelectedTable.Count < 1;
                 }
+            }
+
+            if(Input.GetButtonUp("SelectClick"))
+            {
+                if((!mFirstSelectClick || !Input.GetButton("MoreSelect")) && Time.time - mSelectClickDuration < mDeselectDuration)
+                {
+                    RemoveAllFromSelection();
+                }
+
+                mFirstSelectClick = false;
             }
 
             if (Input.GetButtonDown("ActionClick"))
@@ -70,11 +82,11 @@ namespace GalacticWar
                 if (Physics.Raycast(ray, out hit, 50000.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.NavMesh)))
                 {
                     NavMeshConvexPolygon nmcp = hit.collider.gameObject.GetComponent<NavMeshConvexPolygon>();
-                    foreach (KeyValuePair<int, GameObject> pair in selectedTable)
+                    foreach (KeyValuePair<int, GameObject> pair in mSelectedTable)
                     {
                         if (pair.Value != null)
                         {
-                            NavigatingAgentComponent unit = selectedTable[pair.Key].GetComponent<NavigatingAgentComponent>();
+                            NavigatingAgentComponent unit = mSelectedTable[pair.Key].GetComponent<NavigatingAgentComponent>();
                             unit.mDestinationNavMeshNodeID = nmcp.mIdentifier;
                             unit.mIsMoving = true;
                             unit.mSpeed = 0f;
@@ -87,11 +99,11 @@ namespace GalacticWar
 
                 if (Physics.Raycast(ray, out hit, 50000.0f, Sc_Utilities.GetPhysicsLayerMask(Sc_Utilities.PhysicsLayerMask.Units)))
                 {
-                    foreach (KeyValuePair<int, GameObject> pair in selectedTable)
+                    foreach (KeyValuePair<int, GameObject> pair in mSelectedTable)
                     {
                         if (pair.Value != null)
                         {
-                            NavigatingAgentComponent unit = selectedTable[pair.Key].GetComponent<NavigatingAgentComponent>();
+                            MissileLauncher unit = mSelectedTable[pair.Key].GetComponent<MissileLauncher>();
                             unit.mTarget = hit.point;
                             unit.mIsAttacking = true;
                         }

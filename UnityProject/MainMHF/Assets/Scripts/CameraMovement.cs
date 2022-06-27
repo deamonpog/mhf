@@ -14,8 +14,11 @@ namespace GalacticWar
         public float CameraZoomSpeed = 20.0f;
         public float CameraRotateSpeed = 0.5f;
 
-        Vector2 p1;
-        Vector2 p2;
+        public float CameraDragSpeedX = 0.1f;
+        public float CameraDragSpeedY = 0.1f;
+
+        public Vector2 p1;
+        public Vector2 p2;
 
         public GameObject mArm;
         public GameObject mCamera;
@@ -44,7 +47,15 @@ namespace GalacticWar
             mCamera.transform.position += mCamera.transform.forward * CameraZoomSpeed * Input.GetAxis("Mouse ScrollWheel");
 
             // Rotate camera if MiddleMouseButton (MMB) is pressed. Move camera only if MMB button is not pressed.
-            if (!Input.GetMouseButton(2))
+            if (Input.GetMouseButton(2))
+            {
+                transform.rotation *= getCameraRotation();
+            }
+            else if (Input.GetMouseButton(0))
+            {
+                DragPlanetCamera();
+            }
+            else
             {
                 // -- Mouse Move --
                 Quaternion qh = Quaternion.Euler(0, 0, 0);
@@ -69,15 +80,36 @@ namespace GalacticWar
                 }
                 transform.rotation *= qv * qh;
             }
-            else
-            {
-                transform.rotation *= getCameraRotation();
-            }
+            
 
         }
 
+        // Drag camera around planet
+        private void DragPlanetCamera()
+        {
+            Quaternion rotQ = Quaternion.identity;
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                p1 = Input.mousePosition;
+            }
+
+            if (Input.GetMouseButton(0))
+            {
+                p2 = Input.mousePosition;
+
+                var delta = p2 - p1;
+
+                rotQ = Quaternion.Euler(-delta.y * CameraDragSpeedY, 0, delta.x * CameraDragSpeedX);
+
+                p1 = p2;
+            }
+
+            transform.rotation *= rotQ;
+        }
+
         // Rotate camera around the focused position
-        Quaternion getCameraRotation()
+        private Quaternion getCameraRotation()
         {
             Quaternion retValue = Quaternion.identity;
 

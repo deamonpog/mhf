@@ -206,6 +206,7 @@ GameObject:
   - component: {fileID: 800090141320456209}
   - component: {fileID: 1530330690949535272}
   - component: {fileID: 4847748436840562085}
+  - component: {fileID: -4458014984082967791}
   m_Layer: 6
   m_Name: Unit
   m_TagString: Unit
@@ -249,16 +250,14 @@ MonoBehaviour:
   mMaxAccel: 50
   mUnitRadius: 5
   mIsMoving: 0
-  mPathToDestinationNode: 
-  mCurrentNavMeshNodeID: -1
-  mStartWaypointNavMeshNodeID: -1
-  mTargetWaypointNavMeshNodeID: -1
-  mNextTargetWaypointNavMeshNodeID: -1
-  mDestinationNavMeshNodeID: -1
-  mV3_Destination: {x: 0, y: 0, z: 0}
-  mGeo_Destination:
+  mPathExist: 0
+  mDestination: {x: 0, y: 0, z: 0}
+  mTargetGeo:
     lat: 0
     lon: 0
+  mPathToDestination: []
+  mDestinationNavMeshNodeID: -1
+  mCurrentNavMeshNodeID: -1
   mIsAttacking: 0
   mTarget: {x: 0, y: 0, z: 0}
   projectile: {fileID: 0}
@@ -289,3 +288,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isSelected: 0
+--- !u!114 &-4458014984082967791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8059666967147099610}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b658dafad4397b4cbd527044f1bc962, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
